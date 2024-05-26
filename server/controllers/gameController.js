@@ -65,20 +65,16 @@ const isAvailable = async (req, res) => {
       return res.status(403).json({ message: 'Room is full' });
     }
 
-    
-    await room.save();
-
     res.status(200).json({ message: 'Room is available', room });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-const joinRoom = async (req, res) => {
+const joinRoom = async (req, res, io) => {
   try {
     const { roomId } = req.params;
     const { userInfo } = req.body;
-    console.log("userInfo", userInfo);
 
     const room = await Room.findById(roomId);
     if (!room) {
@@ -106,7 +102,6 @@ const joinRoom = async (req, res) => {
     await room.save();
 
     // 소켓을 통해 실시간 업데이트 전송
-    const io = req.app.get('io');
     io.to(roomId).emit('roomUpdated', room);
 
     res.status(200).json({ message: 'User added to the room', newUser });
@@ -114,8 +109,6 @@ const joinRoom = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-
 
 const deleteRoom = async (req, res) => {
   try {
@@ -155,6 +148,7 @@ const findRoomByCode = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 const getRoomById = async (req, res) => {
   try {
     const { roomId } = req.params;

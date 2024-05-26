@@ -94,7 +94,11 @@ function Home() {
               <div className="card-body">
                 <h5 className="card-title">{room.roomName}</h5>
                 <p className="card-text">{room.currentParticipants} / {room.maxParticipants}</p>
-                <button className="btn btn-primary" onClick={() => setSelectedRoom(room._id)}>입장</button>
+                {room.isPlaying ? (
+                  <p className="text-danger">게임 진행 중</p>
+                ) : (
+                  <button className="btn btn-primary" onClick={() => setSelectedRoom(room._id)}>입장</button>
+                )}
               </div>
             </div>
           </div>

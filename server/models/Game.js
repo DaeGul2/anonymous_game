@@ -44,9 +44,10 @@ const roomSchema = new Schema({
   userInfo: [
     {
       user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-      info: { type: Map, of: String } // 유저 정보 (ex. birthday, sex)
+      info: { type: Map, of: String }
     }
-  ]
+  ],
+  isPlaying: { type: Boolean, default: false } // 게임 진행 중 여부를 나타내는 필드
 });
 
 // 모델 생성
