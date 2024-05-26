@@ -3,6 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import socket from '../socket';
 import Modal from 'react-modal';
+import Stage1 from './stages/Stage1';
+import Stage2 from './stages/Stage2';
+import Stage3 from './stages/Stage3';
+import Stage4 from './stages/Stage4';
+import Stage5 from './stages/Stage5';
+import Stage6 from './stages/Stage6';
+import Stage7 from './stages/Stage7';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
