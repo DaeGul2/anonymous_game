@@ -12,6 +12,7 @@ const MongoStore = require('connect-mongo');
 
 /** routes---  */
 const gameRoutes = require('./routes/gameRoutes'); // gameRoutes 가져오기
+const userRoutes = require('./routes/userRoutes'); // 추가된 부분
 
 
 /** routes--- end */
@@ -70,6 +71,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 
     // 라우터 인스턴스화 및 소켓 전달
     app.use('/api/games', gameRoutes);
+    app.use('/api/users', userRoutes);
 
     // socket.io 연결 설정
     io.on('connection', (socket) => {

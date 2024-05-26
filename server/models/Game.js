@@ -3,7 +3,8 @@ const { Schema } = mongoose;
 
 // User 스키마
 const userSchema = new Schema({
-  info: { type: Map, of: String }
+  info: { type: Map, of: String },
+  roomId: { type: Schema.Types.ObjectId, ref: 'Room' } 
 });
 
 // Question 스키마
@@ -31,14 +32,14 @@ const roomSchema = new Schema({
   maxParticipants: { type: Number, required: true, min: 2, max: 100 },
   currentParticipants: { type: Number, default: 0 }, // 현재 참여자 수를 관리하는 필드
   gameMode: { type: Number, required: true }, // 1: 익명 모드, 2: 벌칙 힌트 모드
+  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }], // 참여자 목록
   hintSettings: [
     {
       infoType: { type: String, required: false }, // ex) 'birthday', 'nationality', 'nickname', etc.
       punishment: { type: String, required: false }
     }
   ],
-  questions: [{ type: Schema.Types.ObjectId, ref: 'Question' }],
-  createdByIp: { type: String, required: true } // 방을 생성한 IP 주소
+  questions: [{ type: Schema.Types.ObjectId, ref: 'Question' }]
 });
 
 // 모델 생성
