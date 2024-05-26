@@ -46,7 +46,7 @@ const getRooms = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+};  
 
 const isAvailable = async (req, res) => {
   try {
@@ -66,7 +66,7 @@ const isAvailable = async (req, res) => {
       return res.status(403).json({ message: 'Room is full' });
     }
 
-    room.currentParticipants += 1;
+    
     await room.save();
 
     res.status(200).json({ message: 'Room is available', room });

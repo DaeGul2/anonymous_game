@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
+
 function CreateRoom() {
   const [formData, setFormData] = useState({
     roomName: '',
@@ -11,14 +17,33 @@ function CreateRoom() {
     questions: []
   });
 
+  const [hintSetting, setHintSetting] = useState({ infoType: '', punishment: '' });
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleHintSettingChange = (e) => {
+    setHintSetting({ ...hintSetting, [e.target.name]: e.target.value });
+  };
+
+  const handleAddHintSetting = () => {
+    setFormData({
+      ...formData,
+      hintSettings: [...formData.hintSettings, hintSetting]
+    });
+    setHintSetting({ infoType: '', punishment: '' });
+  };
+
+  const handleDeleteHintSetting = (index) => {
+    const newHintSettings = formData.hintSettings.filter((_, i) => i !== index);
+    setFormData({ ...formData, hintSettings: newHintSettings });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:8080/api/games/create', formData);
+      const response = await axiosInstance.post('/api/games/create', formData);
       console.log('Room created:', response.data);
     } catch (error) {
       console.error('Error creating room:', error.response.data);
@@ -48,6 +73,24 @@ function CreateRoom() {
             <option value={2}>With Hints</option>
           </select>
         </div>
+        {formData.gameMode == 2 && (
+          <div className="form-group">
+            <label>Hint Settings</label>
+            <div className="mb-2 form-inline">
+              <input type="text" className="mr-2 form-control" placeholder="Info Type" name="infoType" value={hintSetting.infoType} onChange={handleHintSettingChange} />
+              <input type="text" className="mr-2 form-control" placeholder="Punishment" name="punishment" value={hintSetting.punishment} onChange={handleHintSettingChange} />
+              <button type="button" className="btn btn-secondary" onClick={handleAddHintSetting}>Add</button>
+            </div>
+            <ul className="list-group">
+              {formData.hintSettings.map((setting, index) => (
+                <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                  {setting.infoType} || {setting.punishment}
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteHintSetting(index)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <button type="submit" className="btn btn-primary">Create Room</button>
       </form>
     </div>

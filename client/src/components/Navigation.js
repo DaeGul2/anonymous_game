@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
 
 function Navigation() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -9,11 +15,13 @@ function Navigation() {
     user_id: '',
     password: ''
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/auth/status');
+        const response = await axiosInstance.get('/api/auth/status');
+        console.log("checklogin", response)
         if (response.data.loggedIn) {
           setLoggedIn(true);
           setUserId(response.data.user_id);
@@ -32,9 +40,10 @@ function Navigation() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', formData);
+      const response = await axiosInstance.post('/api/auth/login', formData);
       setLoggedIn(true);
       setUserId(response.data.user_id);
+      navigate('/');
     } catch (error) {
       console.error('Error logging in:', error.response.data);
     }
@@ -42,9 +51,10 @@ function Navigation() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8080/api/auth/logout');
+      await axiosInstance.post('/api/auth/logout');
       setLoggedIn(false);
       setUserId('');
+      navigate('/');
     } catch (error) {
       console.error('Error logging out:', error.response.data);
     }
