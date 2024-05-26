@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Pagination from 'react-js-pagination';
 
@@ -54,6 +54,7 @@ function Home() {
   return (
     <div>
       <h2>현재 진행 중인 게임들</h2>
+      <Link to="/create-room" className="mb-4 btn btn-success">방 만들기</Link>
       <div className="row">
         {rooms.map(room => (
           <div key={room._id} className="col-md-4">

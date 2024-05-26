@@ -2,7 +2,7 @@ const { Room, User } = require('../models/Game');
 
 const createRoom = async (req, res) => {
   try {
-    const { roomName, password, maxParticipants, gameMode, hintSettings, questions } = req.body;
+    const { roomName, password, maxParticipants, hintSettings, questions } = req.body;
     const ownerId = req.session.user_id;
 
     if (!ownerId) {
@@ -13,7 +13,6 @@ const createRoom = async (req, res) => {
       roomName, 
       password, 
       maxParticipants, 
-      gameMode, 
       hintSettings, 
       questions,
       ownerId 
@@ -79,6 +78,7 @@ const joinRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
     const { userInfo } = req.body;
+    console.log("userInfo", userInfo);
 
     const room = await Room.findById(roomId);
     if (!room) {
@@ -98,18 +98,24 @@ const joinRoom = async (req, res) => {
     }
 
     const userId = req.session.user_id;
-    const newUser = new User({ user: userId, info: userInfo });
+    const newUser = { user: userId, info: userInfo };
 
     room.participants.push(userId);
     room.currentParticipants += 1;
     room.userInfo.push(newUser);
     await room.save();
 
+    // 소켓을 통해 실시간 업데이트 전송
+    const io = req.app.get('io');
+    io.to(roomId).emit('roomUpdated', room);
+
     res.status(200).json({ message: 'User added to the room', newUser });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 const deleteRoom = async (req, res) => {
   try {

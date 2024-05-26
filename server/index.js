@@ -9,7 +9,6 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const MongoStore = require('connect-mongo');
 
-
 /** routes---  */
 const gameRoutes = require('./routes/gameRoutes'); // gameRoutes 가져오기
 const userRoutes = require('./routes/userRoutes'); // 추가된 부분
@@ -38,6 +37,9 @@ const io = socketIo(server, {
     credentials: true
   }
 });
+
+// 소켓 객체를 애플리케이션 전역에 설정
+app.set('io', io);
 
 const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -81,6 +83,16 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 
       socket.on('disconnect', () => {
         console.log('소켓 연결 종료:', socket.id);
+      });
+
+      socket.on('joinRoom', (roomId) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
+      });
+
+      socket.on('leaveRoom', (roomId) => {
+        socket.leave(roomId);
+        console.log(`Socket ${socket.id} left room ${roomId}`);
       });
 
       socket.on('updateChecklist', (data) => {

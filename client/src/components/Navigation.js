@@ -74,6 +74,7 @@ function Navigation() {
             <input type="text" className="mr-2 form-control" name="user_id" placeholder="User ID" onChange={handleChange} required />
             <input type="password" className="mr-2 form-control" name="password" placeholder="Password" onChange={handleChange} required />
             <button type="submit" className="btn btn-primary">로그인</button>
+            <Link to="/register" className="ml-2 btn btn-secondary">회원가입</Link>
           </form>
         )}
       </div>

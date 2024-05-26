@@ -32,7 +32,6 @@ const roomSchema = new Schema({
   password: { type: String, required: true },
   maxParticipants: { type: Number, required: true, min: 2, max: 100 },
   currentParticipants: { type: Number, default: 0 },
-  gameMode: { type: Number, required: true },
   participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   hintSettings: [
