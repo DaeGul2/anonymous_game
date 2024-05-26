@@ -3,14 +3,15 @@ const { Schema } = mongoose;
 
 // User 스키마
 const userSchema = new Schema({
-  info: { type: Map, of: String },
-  roomId: { type: Schema.Types.ObjectId, ref: 'Room' } 
+  user_id: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
 });
 
 // Question 스키마
 const questionSchema = new Schema({
   creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, required: true }
+  roomId: { type: Schema.Types.ObjectId, ref: 'Room', required: true },
+  content: { type: String, required: true, maxlength: 50 }
 });
 
 // Answer 스키마
@@ -19,7 +20,7 @@ const answerSchema = new Schema({
   answers: [
     {
       userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-      response: { type: String, required: true }, // 'yes' or 'no'
+      response: { type: String, required: true },
       explanation: { type: String, required: false }
     }
   ]
@@ -30,16 +31,23 @@ const roomSchema = new Schema({
   roomName: { type: String, required: true, minlength: 1, maxlength: 100 },
   password: { type: String, required: true },
   maxParticipants: { type: Number, required: true, min: 2, max: 100 },
-  currentParticipants: { type: Number, default: 0 }, // 현재 참여자 수를 관리하는 필드
-  gameMode: { type: Number, required: true }, // 1: 익명 모드, 2: 벌칙 힌트 모드
-  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }], // 참여자 목록
+  currentParticipants: { type: Number, default: 0 },
+  gameMode: { type: Number, required: true },
+  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   hintSettings: [
     {
-      infoType: { type: String, required: false }, // ex) 'birthday', 'nationality', 'nickname', etc.
+      infoType: { type: String, required: false },
       punishment: { type: String, required: false }
     }
   ],
-  questions: [{ type: Schema.Types.ObjectId, ref: 'Question' }]
+  questions: [{ type: Schema.Types.ObjectId, ref: 'Question' }],
+  userInfo: [
+    {
+      user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      info: { type: Map, of: String } // 유저 정보 (ex. birthday, sex)
+    }
+  ]
 });
 
 // 모델 생성
