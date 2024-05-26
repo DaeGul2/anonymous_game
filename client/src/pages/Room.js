@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import socket from '../socket';  // 소켓 인스턴스를 import 합니다.
+import socket from '../socket';
+import Modal from 'react-modal';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
+
+Modal.setAppElement('#root');
 
 function Room() {
   const { roomId } = useParams();
@@ -18,6 +21,10 @@ function Room() {
   const [isParticipant, setIsParticipant] = useState(false);
   const [userId, setUserId] = useState('');
   const [isOwner, setIsOwner] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [timeLeft, setTimeLeft] = useState(120);
+  const timer = useRef(null);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -27,6 +34,16 @@ function Room() {
         setHintSettings(response.data.hintSettings);
         setIsParticipant(response.data.participants.includes(userId));
         setIsOwner(response.data.ownerId === userId);
+
+        // Check if game is already started
+        if (localStorage.getItem('gameStarted') === 'true') {
+          setShowModal(true);
+          const storedTimeLeft = localStorage.getItem('timeLeft');
+          if (storedTimeLeft) {
+            setTimeLeft(parseInt(storedTimeLeft, 10));
+          }
+          startTimer();
+        }
       } catch (error) {
         console.error('Error fetching room:', error.response.data);
       }
@@ -54,8 +71,18 @@ function Room() {
       }
     });
 
+    socket.on('gameStarted', () => {
+      localStorage.setItem('gameStarted', 'true');
+      setShowModal(true);
+      startTimer();
+    });
+
     return () => {
       socket.off('roomUpdated');
+      socket.off('gameStarted');
+      clearInterval(timer.current);
+      localStorage.removeItem('gameStarted');
+      localStorage.removeItem('timeLeft');
     };
   }, [roomId, userId]);
 
@@ -68,11 +95,47 @@ function Room() {
       await axiosInstance.post(`/api/games/join/${roomId}`, { userInfo: { ...userInfo } });
       console.log('User joined the room');
       alert('방에 접속하였습니다');
-      setIsParticipant(true);  // 상태를 업데이트하여 중복 접속을 방지
+      setIsParticipant(true);
       socket.emit('joinRoom', roomId);
     } catch (error) {
       console.error('Error joining room:', error.response.data);
     }
+  };
+
+  const startGame = () => {
+    socket.emit('startGame', roomId);
+  };
+
+  const handleQuestionChange = (e) => {
+    setQuestion(e.target.value);
+  };
+
+  const handleSubmitQuestion = async () => {
+    try {
+      await axiosInstance.post(`/api/questions/${roomId}`, { content: question });
+      alert('질문이 제출되었습니다');
+      setShowModal(false);
+      clearInterval(timer.current);
+      localStorage.removeItem('gameStarted');
+      localStorage.removeItem('timeLeft');
+    } catch (error) {
+      console.error('Error submitting question:', error.response.data);
+    }
+  };
+
+  const startTimer = () => {
+    timer.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        const newTimeLeft = prev - 1;
+        localStorage.setItem('timeLeft', newTimeLeft);
+        if (newTimeLeft <= 0) {
+          clearInterval(timer.current);
+          handleSubmitQuestion();
+          return 0;
+        }
+        return newTimeLeft;
+      });
+    }, 1000);
   };
 
   return (
@@ -84,7 +147,7 @@ function Room() {
             {isParticipant ? (
               <>
                 {isOwner ? (
-                  <button className="mt-4 btn btn-success">Play Game</button>
+                  <button className="mt-4 btn btn-success" onClick={startGame}>Play Game</button>
                 ) : (
                   <p className="mt-4">Wait until start</p>
                 )}
@@ -111,6 +174,22 @@ function Room() {
       ) : (
         <p>Loading...</p>
       )}
+
+      <Modal
+        isOpen={showModal}
+        onRequestClose={() => setShowModal(false)}
+        contentLabel="Question Modal"
+      >
+        <h2>Submit your question</h2>
+        <textarea
+          className="form-control"
+          value={question}
+          onChange={handleQuestionChange}
+          placeholder="Write your question here..."
+        />
+        <p>{`Time left: ${Math.floor(timeLeft / 60)}:${timeLeft % 60}`}</p>
+        <button className="btn btn-primary" onClick={handleSubmitQuestion}>Submit</button>
+      </Modal>
     </div>
   );
 }

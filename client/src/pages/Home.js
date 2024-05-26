@@ -16,6 +16,7 @@ function Home() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -28,8 +29,39 @@ function Home() {
       }
     };
 
+    const fetchUserId = async () => {
+      try {
+        const response = await axiosInstance.get('/api/auth/status');
+        if (response.data.loggedIn) {
+          setUserId(response.data.user_id);
+        }
+      } catch (error) {
+        console.error('Error fetching user ID:', error.response.data);
+      }
+    };
+
+    fetchUserId();
     fetchRooms();
   }, [page]);
+
+  useEffect(() => {
+    const checkParticipant = async () => {
+      if (!selectedRoom) return;
+
+      try {
+        const roomResponse = await axiosInstance.get(`/api/games/${selectedRoom}`);
+        const room = roomResponse.data;
+
+        if (room.participants.includes(userId)) {
+          navigate(`/room/${selectedRoom}`);
+        }
+      } catch (error) {
+        console.error('Error checking participant:', error.response.data);
+      }
+    };
+
+    checkParticipant();
+  }, [selectedRoom, userId, navigate]);
 
   const handlePageChange = (pageNumber) => {
     setPage(pageNumber);

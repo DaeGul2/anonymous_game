@@ -80,21 +80,26 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
     // socket.io 연결 설정
     io.on('connection', (socket) => {
       console.log('새로운 소켓 연결:', socket.id);
-
+    
       socket.on('disconnect', () => {
         console.log('소켓 연결 종료:', socket.id);
       });
-
+    
       socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
       });
-
+    
       socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
         console.log(`Socket ${socket.id} left room ${roomId}`);
       });
-
+    
+      socket.on('startGame', (roomId) => {
+        io.to(roomId).emit('gameStarted');
+        console.log(`Game started in room ${roomId}`);
+      });
+    
       socket.on('updateChecklist', (data) => {
         console.log('데이터 업데이트:', data);
         io.emit('checklistUpdated', data);
