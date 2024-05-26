@@ -47,7 +47,8 @@ const roomSchema = new Schema({
       info: { type: Map, of: String }
     }
   ],
-  isPlaying: { type: Boolean, default: false } // 게임 진행 중 여부를 나타내는 필드
+  isPlaying: { type: Boolean, default: false }, // 게임 진행 중 여부를 나타내는 필드
+  currentStage: { type: Number, default: 0 } // 단계 필드 추가
 });
 
 // 모델 생성

@@ -56,7 +56,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
       origin: process.env.CLIENT_URL || 'http://localhost:3000',
       credentials: true
     }));
-    
+
     app.use(session({
       secret: 'your_secret_key',
       resave: false,
@@ -76,9 +76,9 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 
     app.use('/api/games', gameRoutes);
     app.use('/api/users', userRoutes);
-    app.use('/api/questions', questionRoutes); // 추가된 부분
-    app.use('/api/auth', authRoutes); // 추가된 부분
-    app.use('/api/rooms', roomRoutes); // 추가된 부분
+    app.use('/api/questions', questionRoutes);
+    app.use('/api/auth', authRoutes);
+    app.use('/api/rooms', roomRoutes);
 
     // socket.io 연결 설정
     io.on('connection', (socket) => {
@@ -87,6 +87,11 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
       socket.on('joinRoom', (roomId) => {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
+      });
+
+      socket.on('stageChanged', (roomId, stage) => {  // 추가된 부분
+        io.to(roomId).emit('stageChanged', stage);
+        console.log(`Stage changed to ${stage} in room ${roomId}`);
       });
 
       socket.on('leaveRoom', (roomId) => {
