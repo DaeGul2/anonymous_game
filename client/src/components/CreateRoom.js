@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+// navigate를 초기화합니다.
+
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -40,15 +44,19 @@ function CreateRoom() {
     setFormData({ ...formData, hintSettings: newHintSettings });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axiosInstance.post('/api/games/create', formData);
-      console.log('Room created:', response.data);
-    } catch (error) {
-      console.error('Error creating room:', error.response.data);
-    }
-  };
+  const navigate = useNavigate();
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await axiosInstance.post('/api/games/create', formData);
+    console.log('Room created:', response.data);
+    alert('방이 만들어졌습니다!');
+    navigate('/'); // 홈 화면으로 이동합니다.
+  } catch (error) {
+    console.error('Error creating room:', error.response.data);
+  }
+};
 
   return (
     <div>

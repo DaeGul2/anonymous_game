@@ -149,6 +149,20 @@ const findRoomByCode = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+const getRoomById = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    res.status(200).json(room);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 module.exports = {
   createRoom,
@@ -156,5 +170,6 @@ module.exports = {
   isAvailable,
   joinRoom,
   deleteRoom,
-  findRoomByCode
+  findRoomByCode,
+  getRoomById // 추가된 부분
 };
