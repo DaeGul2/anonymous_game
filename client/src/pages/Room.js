@@ -130,7 +130,7 @@ function Room() {
         <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
         <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>
         <p>Is Pending: {isPending ? 'Yes' : 'No'}</p>
-        <p>참가인원 {room?.currentParticipants}/{room.maxParticipants}</p>
+        <p>참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
       </div>
       {!isParticipant && (
         <div>
@@ -152,7 +152,7 @@ function Room() {
       )}
       {isParticipant && (
         <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage} currentParticipants={room.currentParticipants} maxParticipants={room.maxParticipants}/> : <Player />}
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage}/> : <Player />}
           {room.currentStage === 0 && <Stage0 />}
           {room.currentStage === 1 && <Stage1 />}
           {room.currentStage === 2 && <Stage2 />}

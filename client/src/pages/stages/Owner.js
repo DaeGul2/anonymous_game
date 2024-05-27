@@ -45,6 +45,7 @@ function Owner({ roomId, onStageChange, currentStage }) {
     <div>
       <h3>Owner Controls</h3>
       {currentStage === 0 ? (
+
         <button className="mt-4 btn btn-success" onClick={handleStartGame}>Play Game</button>
       ) : (
         <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>
