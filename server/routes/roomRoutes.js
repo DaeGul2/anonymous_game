@@ -9,5 +9,7 @@ router.post('/start/:roomId', (req, res) => {
 router.post('/changeStage/:roomId', (req, res) => {
     changeStage(req, res, req.io);
   });
-
+  router.post('/togglePending/:roomId', (req, res) => {
+    togglePending(req, res, req.io);
+  });
 module.exports = router;

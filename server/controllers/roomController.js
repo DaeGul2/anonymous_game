@@ -64,8 +64,37 @@ const changeStage = async (req, res, io) => {
   }
 };
 
+const togglePending = async (req, res, io) => {
+  try {
+    const { roomId } = req.params;
+    const userId = req.session.user_id;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized: No user session found' });
+    }
+
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    if (room.ownerId.toString() !== userId) {
+      return res.status(403).json({ message: 'Only the room owner can toggle pending status' });
+    }
+
+    room.isPending = !room.isPending;
+    await room.save();
+
+    io.to(roomId).emit('pendingToggled', room.isPending);
+
+    res.status(200).json({ message: 'Pending status toggled', isPending: room.isPending });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 module.exports = {
   startGame,
-  changeStage
+  changeStage,
+  togglePending
 };
