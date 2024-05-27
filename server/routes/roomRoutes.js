@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { startGame, changeStage, togglePending } = require('../controllers/roomController');
+const { startGame, changeStage, togglePending, backStage } = require('../controllers/roomController');
 
 router.post('/start/:roomId', (req, res) => {
     
@@ -8,6 +8,9 @@ router.post('/start/:roomId', (req, res) => {
   });
 router.post('/changeStage/:roomId', (req, res) => {
     changeStage(req, res, req.io);
+  });
+  router.post('/backStage/:roomId', (req, res) => {
+    backStage(req, res, req.io);
   });
   router.post('/togglePending/:roomId', (req, res) => {
     togglePending(req, res, req.io);
