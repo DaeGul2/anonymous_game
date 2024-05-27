@@ -1,3 +1,4 @@
+// Stage2.js
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
@@ -9,7 +10,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-function Stage2({ roomId, isOwner }) {
+function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
   const [questions, setQuestions] = useState([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
@@ -71,6 +72,10 @@ function Stage2({ roomId, isOwner }) {
   const handleTimeout = async () => {
     await submitAnswer();
     setModalIsOpen(false);
+    setSelectedQuestionId(selectedQuestion._id); // questionId를 설정
+    onStageChange(3); // Stage3로 이동
+    socket.emit('stageChanged', roomId, 3); // 모든 사용자에게 Stage3로 변경 알림
+    socket.emit('questionSelected', roomId, selectedQuestion._id, isOwner); // 선택된 질문 및 isOwner 정보 전송
   };
 
   const submitAnswer = async () => {

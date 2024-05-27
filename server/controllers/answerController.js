@@ -1,3 +1,4 @@
+// questionController.js
 const { Question } = require('../models/Game');
 
 const addAnswer = async (req, res) => {
@@ -5,9 +6,9 @@ const addAnswer = async (req, res) => {
     const { questionId } = req.params;
     const { response, explanation } = req.body;
     const userId = req.session.user_id; // 세션에서 userId 가져오기
-    console.log("addAnswer 실행", response, explanation)
+    console.log("addAnswer 실행", response, explanation);
 
-    if (!userId || response===undefined) {
+    if (!userId || response === undefined) {
       return res.status(400).json({ message: 'User ID and response are required' });
     }
 
@@ -27,6 +28,26 @@ const addAnswer = async (req, res) => {
   }
 };
 
+const getAnswers = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    // isFinished를 true로 설정
+    question.isFinished = true;
+    await question.save();
+
+    res.status(200).json(question);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   addAnswer,
+  getAnswers,
 };

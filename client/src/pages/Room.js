@@ -1,3 +1,4 @@
+// Room.js
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -27,12 +28,15 @@ function Room() {
   const [isParticipant, setIsParticipant] = useState(false);
   const [userInfo, setUserInfo] = useState({});
   const [isPending, setIsPending] = useState(false);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [selectedQuestionId, setSelectedQuestionId] = useState(null);
 
   useEffect(() => {
     const fetchRoom = async () => {
       try {
         const response = await axiosInstance.get(`/api/games/${roomId}`);
         setRoom(response.data);
+        setCurrentStage(response.data.currentStage);
         setIsPending(response.data.isPending);
       } catch (error) {
         console.error('Error fetching room:', error.response?.data || error.message);
@@ -60,17 +64,18 @@ function Room() {
     const handleRoomUpdated = (updatedRoom) => {
       if (updatedRoom._id === roomId) {
         setRoom(updatedRoom);
+        setCurrentStage(updatedRoom.currentStage);
         setIsParticipant(updatedRoom.participants.includes(userId));
         setIsPending(updatedRoom.isPending);
       }
     };
 
     const handleStageChanged = (stage) => {
-      setRoom((prevRoom) => ({ ...prevRoom, currentStage: stage }));
+      setCurrentStage(stage);
     };
 
     const handleGameStarted = (stage) => {
-      setRoom((prevRoom) => ({ ...prevRoom, currentStage: stage }));
+      setCurrentStage(stage);
     };
 
     const handlePendingToggled = (isPending) => {
@@ -86,16 +91,22 @@ function Room() {
       }
     };
 
+    const handleQuestionSelected = (roomId, questionId, isOwner) => {
+      setSelectedQuestionId(questionId);
+    };
+
     socket.on('roomUpdated', handleRoomUpdated);
     socket.on('stageChanged', handleStageChanged);
     socket.on('gameStarted', handleGameStarted);
     socket.on('pendingToggled', handlePendingToggled);
+    socket.on('questionSelected', handleQuestionSelected);
 
     return () => {
       socket.off('roomUpdated', handleRoomUpdated);
       socket.off('stageChanged', handleStageChanged);
       socket.off('gameStarted', handleGameStarted);
       socket.off('pendingToggled', handlePendingToggled);
+      socket.off('questionSelected', handleQuestionSelected);
     };
   }, [roomId, userId]);
 
@@ -140,7 +151,7 @@ function Room() {
   };
 
   const handleStageChange = (newStage) => {
-    setRoom((prevRoom) => ({ ...prevRoom, currentStage: newStage }));
+    setCurrentStage(newStage);
   };
 
   const togglePending = async () => {
@@ -156,7 +167,7 @@ function Room() {
       <div>
         <h2>{room?.roomName}</h2>
         <p>Room ID: {room?._id}</p>
-        <p>Current Stage: {room?.currentStage}</p>
+        <p>Current Stage: {currentStage}</p>
         <p>Participants: {room?.participants.length}</p>
         <p>Max Participants: {room?.maxParticipants}</p>
         <p>Owner: {room?.ownerId}</p>
@@ -187,15 +198,15 @@ function Room() {
       )}
       {isParticipant && (
         <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage}/> : <Player />}
-          {room.currentStage === 0 && <Stage0 />}
-          {room.currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />} {/* togglePending 및 roomId 전달 */}
-          {room.currentStage === 2 && <Stage2 isOwner={isOwner} roomId={roomId}/>}
-          {room.currentStage === 3 && <Stage3 />}
-          {room.currentStage === 4 && <Stage4 />}
-          {room.currentStage === 5 && <Stage5 />}
-          {room.currentStage === 6 && <Stage6 />}
-          {room.currentStage === 7 && <Stage7 />}
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={currentStage}/> : <Player />}
+          {currentStage === 0 && <Stage0 />}
+          {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
+          {currentStage === 2 && <Stage2 isOwner={isOwner} roomId={roomId} onStageChange={handleStageChange} setSelectedQuestionId={setSelectedQuestionId} />}
+          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} />}
+          {currentStage === 4 && <Stage4 />}
+          {currentStage === 5 && <Stage5 />}
+          {currentStage === 6 && <Stage6 />}
+          {currentStage === 7 && <Stage7 />}
         </div>
       )}
     </div>
