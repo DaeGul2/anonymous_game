@@ -68,12 +68,18 @@ function Room() {
       setRoom((prevRoom) => ({ ...prevRoom, currentStage: stage }));
     };
 
+    const handleGameStarted = (stage) => {
+      setRoom((prevRoom) => ({ ...prevRoom, currentStage: stage }));
+    };
+
     socket.on('roomUpdated', handleRoomUpdated);
     socket.on('stageChanged', handleStageChanged);
+    socket.on('gameStarted', handleGameStarted);
 
     return () => {
       socket.off('roomUpdated', handleRoomUpdated);
       socket.off('stageChanged', handleStageChanged);
+      socket.off('gameStarted', handleGameStarted);
     };
   }, [roomId, userId]);
 
@@ -142,7 +148,7 @@ function Room() {
       )}
       {isParticipant && (
         <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} /> : <Player />}
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage} /> : <Player />}
           {room.currentStage === 0 && <Stage0 />}
           {room.currentStage === 1 && <Stage1 />}
           {room.currentStage === 2 && <Stage2 />}
