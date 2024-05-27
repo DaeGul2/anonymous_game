@@ -25,6 +25,22 @@ function Owner({ roomId, onStageChange, currentStage }) {
     }
   };
 
+  const handleBackStage = async () => {
+    try {
+      const response = await axiosInstance.post(`/api/rooms/backStage/${roomId}`);
+      const nextStage = response.data.next_stage;
+      socket.emit('stageChanged', roomId, nextStage);
+      onStageChange(nextStage);
+
+      // 방 정보 업데이트
+      const roomResponse = await axiosInstance.get(`/api/games/${roomId}`);
+      const updatedRoom = roomResponse.data;
+      socket.emit('roomUpdated', updatedRoom);
+    } catch (error) {
+      console.error('Error changing stage:', error.response.data);
+    }
+  };
+
   const handleStartGame = async () => {
     try {
       const response = await axiosInstance.post(`/api/rooms/start/${roomId}`);
@@ -48,7 +64,12 @@ function Owner({ roomId, onStageChange, currentStage }) {
 
         <button className="mt-4 btn btn-success" onClick={handleStartGame}>Play Game</button>
       ) : (
-        <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>
+        <div>
+          
+          {currentStage>2&&<button className="mt-4 btn btn-danger" onClick={handleBackStage}>Back Stage</button>}
+          <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>
+          
+        </div>
       )}
     </div>
   );
