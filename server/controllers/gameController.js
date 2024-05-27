@@ -9,13 +9,13 @@ const createRoom = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized: No user session found' });
     }
 
-    const newRoom = new Room({ 
-      roomName, 
-      password, 
-      maxParticipants, 
-      hintSettings, 
+    const newRoom = new Room({
+      roomName,
+      password,
+      maxParticipants,
+      hintSettings,
       questions,
-      ownerId 
+      ownerId
     });
     await newRoom.save();
     res.status(201).json(newRoom);
@@ -32,6 +32,7 @@ const getRooms = async (req, res) => {
     const limitNum = parseInt(limit);
 
     const rooms = await Room.find()
+      .sort({ createdAt: -1 }) // 최신 순으로 정렬
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
@@ -46,6 +47,7 @@ const getRooms = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };  
+
 
 const isAvailable = async (req, res) => {
   try {

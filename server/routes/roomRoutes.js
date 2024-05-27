@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { startGame } = require('../controllers/roomController');
+const { startGame, changeStage } = require('../controllers/roomController');
 
 router.post('/start/:roomId', (req, res) => {
     

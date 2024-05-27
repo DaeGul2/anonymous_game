@@ -49,7 +49,7 @@ const roomSchema = new Schema({
   ],
   isPlaying: { type: Boolean, default: false }, // 게임 진행 중 여부를 나타내는 필드
   currentStage: { type: Number, default: 0 } // 단계 필드 추가
-});
+}, { timestamps: true });
 
 // 모델 생성
 const User = mongoose.model('User', userSchema);

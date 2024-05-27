@@ -24,7 +24,7 @@ const startGame = async (req, res, io) => {
 
     io.to(roomId).emit('gameStarted', room.currentStage);
 
-    res.status(200).json({ message: 'Game started successfully' });
+    res.status(200).json({ message: 'Game started successfully', stage: room.currentStage });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
