@@ -5,7 +5,6 @@ const createQuestion = async (req, res) => {
     const { roomId } = req.params;
     const { content } = req.body;
     const userId = req.session.user_id; // 세션에서 userId 가져오기
-    console.log("씨발련아 ",roomId, content);
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized: No user session found' });
@@ -22,8 +21,8 @@ const createQuestion = async (req, res) => {
 
     const newQuestion = new Question({ creatorId: userId, roomId, content });
     await newQuestion.save();
-
-    room.questions.push(newQuestion._id);
+    console.log(newQuestion);
+    room.questions.push(newQuestion);
     await room.save();
 
     res.status(201).json(newQuestion);

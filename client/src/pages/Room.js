@@ -190,7 +190,7 @@ function Room() {
           {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage}/> : <Player />}
           {room.currentStage === 0 && <Stage0 />}
           {room.currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />} {/* togglePending 및 roomId 전달 */}
-          {room.currentStage === 2 && <Stage2 />}
+          {room.currentStage === 2 && <Stage2 roomId={roomId}/>}
           {room.currentStage === 3 && <Stage3 />}
           {room.currentStage === 4 && <Stage4 />}
           {room.currentStage === 5 && <Stage5 />}
