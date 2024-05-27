@@ -5,6 +5,7 @@ const createQuestion = async (req, res) => {
     const { roomId } = req.params;
     const { content } = req.body;
     const userId = req.session.user_id; // 세션에서 userId 가져오기
+    console.log(roomId, content);
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized: No user session found' });

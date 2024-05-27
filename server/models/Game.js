@@ -11,7 +11,7 @@ const userSchema = new Schema({
 const questionSchema = new Schema({
   creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   roomId: { type: Schema.Types.ObjectId, ref: 'Room', required: true },
-  content: { type: String, required: true, maxlength: 50 }
+  content: { type: String, required: true,default:"no", maxlength: 50 }
 });
 
 // Answer 스키마

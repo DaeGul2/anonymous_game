@@ -78,9 +78,7 @@ const togglePending = async (req, res, io) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    if (room.ownerId.toString() !== userId) {
-      return res.status(403).json({ message: 'Only the room owner can toggle pending status' });
-    }
+   
 
     room.isPending = !room.isPending;
     await room.save();
