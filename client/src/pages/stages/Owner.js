@@ -15,6 +15,11 @@ function Owner({ roomId, onStageChange, currentStage }) {
       const nextStage = response.data.next_stage;
       socket.emit('stageChanged', roomId, nextStage);
       onStageChange(nextStage);
+
+      // 방 정보 업데이트
+      const roomResponse = await axiosInstance.get(`/api/games/${roomId}`);
+      const updatedRoom = roomResponse.data;
+      socket.emit('roomUpdated', updatedRoom);
     } catch (error) {
       console.error('Error changing stage:', error.response.data);
     }
@@ -26,6 +31,11 @@ function Owner({ roomId, onStageChange, currentStage }) {
       const newStage = response.data.stage;
       socket.emit('gameStarted', roomId, newStage);
       onStageChange(newStage);
+
+      // 방 정보 업데이트
+      const roomResponse = await axiosInstance.get(`/api/games/${roomId}`);
+      const updatedRoom = roomResponse.data;
+      socket.emit('roomUpdated', updatedRoom);
     } catch (error) {
       console.error('Error starting game:', error.response.data);
     }

@@ -81,8 +81,9 @@ function Room() {
     if (room && userId) {
       setIsOwner(room.ownerId === userId);
       setIsParticipant(room.participants.includes(userId));
+      socket.emit('joinRoom', roomId); // 방에 다시 참여
     }
-  }, [room, userId]);
+  }, [room, userId, roomId]);
 
   const handleChange = (e) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
