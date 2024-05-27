@@ -1,6 +1,6 @@
 import React from 'react';
-import axios from 'axios';
 import socket from '../../socket';
+import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -8,20 +8,37 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-function Owner({ roomId }) {
-  const changeStage = async () => {
+function Owner({ roomId, onStageChange, currentStage }) {
+  const handleNextStage = async () => {
     try {
-      await axiosInstance.post(`/api/rooms/changeStage/${roomId}`);
-      socket.emit('stageChanged', roomId);
+      const response = await axiosInstance.post(`/api/rooms/changeStage/${roomId}`);
+      const nextStage = response.data.next_stage;
+      socket.emit('stageChanged', roomId, nextStage);
+      onStageChange(nextStage);
     } catch (error) {
       console.error('Error changing stage:', error.response.data);
+    }
+  };
+
+  const handleStartGame = async () => {
+    try {
+      const response = await axiosInstance.post(`/api/rooms/start/${roomId}`);
+      const newStage = response.data.stage;
+      socket.emit('gameStarted', roomId, newStage);
+      onStageChange(newStage);
+    } catch (error) {
+      console.error('Error starting game:', error.response.data);
     }
   };
 
   return (
     <div>
       <h3>Owner Controls</h3>
-      <button className="btn btn-primary" onClick={changeStage}>Next Stage</button>
+      {currentStage === 0 ? (
+        <button className="mt-4 btn btn-success" onClick={handleStartGame}>Play Game</button>
+      ) : (
+        <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>
+      )}
     </div>
   );
 }

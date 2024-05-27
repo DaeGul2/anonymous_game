@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import socket from '../socket';
 import Modal from 'react-modal';
+import Stage0 from './stages/Stage0';
 import Stage1 from './stages/Stage1';
 import Stage2 from './stages/Stage2';
 import Stage3 from './stages/Stage3';
@@ -10,6 +11,8 @@ import Stage4 from './stages/Stage4';
 import Stage5 from './stages/Stage5';
 import Stage6 from './stages/Stage6';
 import Stage7 from './stages/Stage7';
+import Owner from './stages/Owner';
+import Player from './stages/Player';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -17,45 +20,22 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-Modal.setAppElement('#root');
-
 function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
-  const [userInfo, setUserInfo] = useState({});
-  const [hintSettings, setHintSettings] = useState([]);
-  const [isParticipant, setIsParticipant] = useState(false);
   const [userId, setUserId] = useState('');
   const [isOwner, setIsOwner] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [timeLeft, setTimeLeft] = useState(120);
-  const timer = useRef(null);
+  const [isParticipant, setIsParticipant] = useState(false);
+  const [userInfo, setUserInfo] = useState({});
 
   useEffect(() => {
     const fetchRoom = async () => {
       try {
         const response = await axiosInstance.get(`/api/games/${roomId}`);
         setRoom(response.data);
-        setHintSettings(response.data.hintSettings);
-        setIsParticipant(response.data.participants.includes(userId));
-        setIsOwner(response.data.ownerId === userId);
-
-        // 소켓을 특정 방에 가입시킴
-        socket.emit('joinRoom', roomId);
-
-        // Check if game is already started
-        if (localStorage.getItem('gameStarted') === 'true') {
-          setShowModal(true);
-          const storedTimeLeft = localStorage.getItem('timeLeft');
-          if (storedTimeLeft) {
-            setTimeLeft(parseInt(storedTimeLeft, 10));
-          }
-          startTimer();
-        }
       } catch (error) {
-        console.error('Error fetching room:', error.response.data);
+        console.error('Error fetching room:', error.response?.data || error.message);
       }
     };
 
@@ -66,37 +46,43 @@ function Room() {
           setUserId(response.data.user_id);
         }
       } catch (error) {
-        console.error('Error fetching user ID:', error.response.data);
+        console.error('Error fetching user ID:', error.response?.data || error.message);
       }
     };
 
-    fetchUserId().then(() => {
-      fetchRoom(userId);
-    });
+    const initialize = async () => {
+      await fetchUserId();
+      await fetchRoom();
+    };
 
-    socket.on('roomUpdated', (updatedRoom) => {
+    initialize();
+
+    const handleRoomUpdated = (updatedRoom) => {
       if (updatedRoom._id === roomId) {
         setRoom(updatedRoom);
         setIsParticipant(updatedRoom.participants.includes(userId));
-        setIsOwner(updatedRoom.ownerId === userId);
       }
-    });
+    };
 
-    socket.on('gameStarted', () => {
-      localStorage.setItem('gameStarted', 'true');
-      setShowModal(true);
-      startTimer();
-    });
+    const handleStageChanged = (stage) => {
+      setRoom((prevRoom) => ({ ...prevRoom, currentStage: stage }));
+    };
+
+    socket.on('roomUpdated', handleRoomUpdated);
+    socket.on('stageChanged', handleStageChanged);
 
     return () => {
-      socket.off('roomUpdated');
-      socket.off('gameStarted');
-      socket.emit('leaveRoom', roomId); // 방 떠날 때 소켓에서 방 나가기
-      clearInterval(timer.current);
-      localStorage.removeItem('gameStarted');
-      localStorage.removeItem('timeLeft');
+      socket.off('roomUpdated', handleRoomUpdated);
+      socket.off('stageChanged', handleStageChanged);
     };
   }, [roomId, userId]);
+
+  useEffect(() => {
+    if (room && userId) {
+      setIsOwner(room.ownerId === userId);
+      setIsParticipant(room.participants.includes(userId));
+    }
+  }, [room, userId]);
 
   const handleChange = (e) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -104,111 +90,68 @@ function Room() {
 
   const handleJoin = async () => {
     try {
-      setIsParticipant(true); // 상태를 즉시 변경하여 중복 클릭 방지
-      await axiosInstance.post(`/api/games/join/${roomId}`, { userInfo: { ...userInfo } });
-      console.log('User joined the room');
+      await axiosInstance.post(`/api/games/join/${roomId}`, { userInfo });
       alert('방에 접속하였습니다');
-      socket.emit('joinRoom', roomId); // 방에 가입 요청
-      navigate(`/room/${roomId}`); // 방 입장 경로로 이동
+      socket.emit('joinRoom', roomId);
+
+      // 방 정보를 다시 가져와서 업데이트
+      const response = await axiosInstance.get(`/api/games/${roomId}`);
+      setRoom(response.data);
+      setIsParticipant(response.data.participants.includes(userId));
     } catch (error) {
-      console.error('Error joining room:', error.response.data);
-      setIsParticipant(false); // 에러 발생 시 상태 원복
+      console.error('Error joining room:', error.response?.data || error.message);
     }
   };
 
-  const startGame = async () => {
-    try {
-      await axiosInstance.post(`/api/rooms/start/${roomId}`);
-      socket.emit('startGame', roomId);
-    } catch (error) {
-      console.error('Error starting game:', error.response.data);
-    }
-  };
-
-  const handleQuestionChange = (e) => {
-    setQuestion(e.target.value);
-  };
-
-  const handleSubmitQuestion = async () => {
-    try {
-      await axiosInstance.post(`/api/questions/create/${roomId}`, { content: question });
-      alert('질문이 제출되었습니다');
-      setShowModal(false);
-      clearInterval(timer.current);
-      localStorage.removeItem('gameStarted');
-      localStorage.removeItem('timeLeft');
-    } catch (error) {
-      console.error('Error submitting question:', error.response.data);
-    }
-  };
-
-  const startTimer = () => {
-    timer.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        const newTimeLeft = prev - 1;
-        localStorage.setItem('timeLeft', newTimeLeft);
-        if (newTimeLeft <= 0) {
-          clearInterval(timer.current);
-          handleSubmitQuestion();
-          return 0;
-        }
-        return newTimeLeft;
-      });
-    }, 1000);
+  const handleStageChange = (newStage) => {
+    setRoom((prevRoom) => ({ ...prevRoom, currentStage: newStage }));
   };
 
   return (
     <div>
-      {room ? (
-        <>
-          <h2>{room.roomName}</h2>
-          <div>
-            {isParticipant ? (
-              <>
-                {isOwner ? (
-                  <button className="mt-4 btn btn-success" onClick={startGame}>Play Game</button>
-                ) : (
-                  <p className="mt-4">Wait until start</p>
-                )}
-              </>
-            ) : (
-              <>
-                {hintSettings.map((setting, index) => (
-                  <div key={index} className="form-group">
-                    <label>{setting.infoType}</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name={setting.infoType}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                ))}
-                <button className="btn btn-primary" onClick={handleJoin}>Join Room</button>
-              </>
-            )}
-          </div>
-        </>
-      ) : (
-        <p>Loading...</p>
+      <div>
+        <h2>{room?.roomName}</h2>
+        <p>Room ID: {room?._id}</p>
+        <p>Current Stage: {room?.currentStage}</p>
+        <p>Participants: {room?.participants.length}</p>
+        <p>Max Participants: {room?.maxParticipants}</p>
+        <p>Owner: {room?.ownerId}</p>
+        <p>Hint Settings: {JSON.stringify(room?.hintSettings)}</p>
+        <p>Current User ID: {userId}</p>
+        <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
+        <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>
+      </div>
+      {!isParticipant && (
+        <div>
+          <h3>Fill in your info to join the room:</h3>
+          {room?.hintSettings.map((setting, index) => (
+            <div key={index} className="form-group">
+              <label>{setting.infoType}</label>
+              <input
+                type="text"
+                className="form-control"
+                name={setting.infoType}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          ))}
+          <button className="btn btn-primary" onClick={handleJoin}>Join Room</button>
+        </div>
       )}
-
-      <Modal
-        isOpen={showModal}
-        onRequestClose={() => setShowModal(false)}
-        contentLabel="Question Modal"
-      >
-        <h2>Submit your question</h2>
-        <textarea
-          className="form-control"
-          value={question}
-          onChange={handleQuestionChange}
-          placeholder="Write your question here..."
-        />
-        <p>{`Time left: ${Math.floor(timeLeft / 60)}:${timeLeft % 60}`}</p>
-        <button className="btn btn-primary" onClick={handleSubmitQuestion}>Submit</button>
-      </Modal>
+      {isParticipant && (
+        <div>
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} /> : <Player />}
+          {room.currentStage === 0 && <Stage0 />}
+          {room.currentStage === 1 && <Stage1 />}
+          {room.currentStage === 2 && <Stage2 />}
+          {room.currentStage === 3 && <Stage3 />}
+          {room.currentStage === 4 && <Stage4 />}
+          {room.currentStage === 5 && <Stage5 />}
+          {room.currentStage === 6 && <Stage6 />}
+          {room.currentStage === 7 && <Stage7 />}
+        </div>
+      )}
     </div>
   );
 }

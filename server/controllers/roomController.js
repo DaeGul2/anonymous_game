@@ -50,13 +50,13 @@ const changeStage = async (req, res, io) => {
       return res.status(403).json({ message: 'Forbidden: You are not the owner of this room' });
     }
     
-    const next_stage = (room.currentStage+1)%7;
+    const next_stage = (room.currentStage + 1) % 7;
 
     room.currentStage = next_stage;
     await room.save();
 
     // 소켓을 통해 클라이언트에 단계 변경을 알림
-    io.to(roomId).emit('stageChanged', next_stage);
+    io.to(roomId).emit('stageChanged', roomId, next_stage);
 
     res.status(200).json({ message: 'Stage changed to : ', next_stage });
   } catch (err) {

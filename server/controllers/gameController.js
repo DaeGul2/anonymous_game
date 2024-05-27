@@ -173,5 +173,5 @@ module.exports = {
   joinRoom,
   deleteRoom,
   findRoomByCode,
-  getRoomById // 추가된 부분
+  getRoomById
 };
