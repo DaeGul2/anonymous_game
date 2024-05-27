@@ -112,7 +112,14 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
         console.log('데이터 업데이트:', data);
         io.emit('checklistUpdated', data);
       });
+
+      socket.on('newQuestion', (roomId, question) => {
+        io.to(roomId).emit('newQuestion', question);
+        console.log(`New question in room ${roomId}:`, question);
+      });
+
     });
+    
     
 
     server.listen(PORT, () => {

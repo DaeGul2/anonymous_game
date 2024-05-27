@@ -32,6 +32,44 @@ const createQuestion = async (req, res) => {
   }
 };
 
+const getQuestions = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await Room.findById(roomId).populate('questions');
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    res.status(200).json(room.questions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const finishQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const io = req.app.get('io'); // 소켓 IO 인스턴스를 가져옴
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    question.isFinished = true;
+    await question.save();
+
+    io.to(question.roomId.toString()).emit('updateQuestion', question);
+
+    res.status(200).json(question);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
-  createQuestion
+  createQuestion,
+  getQuestions,
+  finishQuestion
 };
