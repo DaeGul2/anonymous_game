@@ -12,13 +12,7 @@ const questionSchema = new Schema({
   creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   roomId: { type: Schema.Types.ObjectId, ref: 'Room', required: true },
   content: { type: String, required: true,default:"no", maxlength: 100 },
-  isFinished : {type: Boolean, default: false}
-
-});
-
-// Answer 스키마
-const answerSchema = new Schema({
-  questionId: { type: Schema.Types.ObjectId, ref: 'Question', required: true },
+  isFinished : {type: Boolean, default: false},
   answers: [
     {
       userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -26,7 +20,9 @@ const answerSchema = new Schema({
       explanation: { type: String, required: false }
     }
   ]
+
 });
+
 
 // Room 스키마
 const roomSchema = new Schema({
@@ -57,12 +53,10 @@ const roomSchema = new Schema({
 // 모델 생성
 const User = mongoose.model('User', userSchema);
 const Question = mongoose.model('Question', questionSchema);
-const Answer = mongoose.model('Answer', answerSchema);
 const Room = mongoose.model('Room', roomSchema);
 
 module.exports = {
   User,
   Question,
-  Answer,
   Room
 };

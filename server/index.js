@@ -15,6 +15,7 @@ const userRoutes = require('./routes/userRoutes'); // 추가된 부분
 const questionRoutes = require('./routes/questionRoutes'); // 추가된 부분
 const authRoutes = require('./routes/authRoutes');
 const roomRoutes = require('./routes/roomRoutes'); // 추가된 부분
+const answerRoutes = require('./routes/answerRoutes');
 /** routes--- end */
 
 const apiKey = process.env.API_KEY; // 안전한 API 키를 설정하세요
@@ -77,6 +78,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
     app.use('/api/games', gameRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/questions', questionRoutes);
+    app.use('/api/answers', answerRoutes);
     app.use('/api/auth', authRoutes);
     app.use('/api/rooms', roomRoutes);
 
