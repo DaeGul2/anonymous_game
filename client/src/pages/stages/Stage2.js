@@ -7,7 +7,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-function Stage2({ roomId }) {
+function Stage2({ roomId, isOwner }) {
   const [questions, setQuestions] = useState([]);
 
   useEffect(() => {
@@ -40,9 +40,11 @@ function Stage2({ roomId }) {
             <tr key={question._id}>
               <td>{index + 1}</td>
               <td>{question.content}</td>
-              <td>{question.isFinished ? 'True' : 'False'}</td>
+              <td>{question.isFinished ? '답변완료' : '답변미완료'}</td>
+              {isOwner&&(
+                question.isFinished?(<td></td>):<button className="mt-4 btn btn-primary">선택</button>
+              )}
               
-              {question.isFinished ? (<p></p>) : <button className="mt-4 btn btn-primary">선택</button>}
               
             </tr>
           ))}
