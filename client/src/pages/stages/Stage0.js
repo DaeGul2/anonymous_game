@@ -2,7 +2,9 @@ import React from 'react'
 
 function Stage0() {
   return (
-    <div>Stage0</div>
+    <div>
+      게임시작 버튼을 눌러주세요!
+    </div>
   )
 }
 

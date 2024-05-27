@@ -28,12 +28,14 @@ function Room() {
   const [isOwner, setIsOwner] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [userInfo, setUserInfo] = useState({});
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     const fetchRoom = async () => {
       try {
         const response = await axiosInstance.get(`/api/games/${roomId}`);
         setRoom(response.data);
+        setIsPending(response.data.isPending)
       } catch (error) {
         console.error('Error fetching room:', error.response?.data || error.message);
       }
@@ -127,6 +129,8 @@ function Room() {
         <p>Current User ID: {userId}</p>
         <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
         <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>
+        <p>Is Pending: {isPending ? 'Yes' : 'No'}</p>
+        <p>참가인원 {room?.currentParticipants}/{room.maxParticipants}</p>
       </div>
       {!isParticipant && (
         <div>
@@ -148,7 +152,7 @@ function Room() {
       )}
       {isParticipant && (
         <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage} /> : <Player />}
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={room.currentStage} currentParticipants={room.currentParticipants} maxParticipants={room.maxParticipants}/> : <Player />}
           {room.currentStage === 0 && <Stage0 />}
           {room.currentStage === 1 && <Stage1 />}
           {room.currentStage === 2 && <Stage2 />}
