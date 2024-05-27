@@ -16,7 +16,7 @@ const questionSchema = new Schema({
   answers: [
     {
       userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-      response: { type: String, required: true },
+      response: { type: Number, required: true, enum: [0, 1] }, // Ensure response is either 0 or 1
       explanation: { type: String, required: false }
     }
   ]
