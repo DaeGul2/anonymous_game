@@ -7,8 +7,10 @@ import Navigation from './components/Navigation';
 import CreateRoom from './components/CreateRoom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-
+import './global.css'
 import './App.css';
+
+
 
 function App() {
   return (
