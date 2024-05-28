@@ -167,16 +167,16 @@ function Room() {
     <div>
       <div>
         <h2>{room?.roomName}</h2>
-        <p>Room ID: {room?._id}</p>
+        {/* <p>Room ID: {room?._id}</p>
         <p>Current Stage: {currentStage}</p>
         <p>Participants: {room?.participants.length}</p>
         <p>Max Participants: {room?.maxParticipants}</p>
-        <p>Owner: {room?.ownerId}</p>
+        <p>Owner: {room?.ownerId}</p> */}
         <p>Hint Settings: {JSON.stringify(room?.hintSettings)}</p>
-        <p>Current User ID: {userId}</p>
+        {/* <p>Current User ID: {userId}</p>
         <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
         <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>
-        <p>Is Pending: {isPending ? 'Yes' : 'No'}</p>
+        <p>Is Pending: {isPending ? 'Yes' : 'No'}</p> */}
         <p>참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
       </div>
       {!isParticipant && (
