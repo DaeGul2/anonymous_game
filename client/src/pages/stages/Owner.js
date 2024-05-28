@@ -57,7 +57,7 @@ function Owner({ roomId, onStageChange, currentStage }) {
 
   return (
     <div>
-      <h3>방장</h3>
+      
       {currentStage === 0 ? (
         <button className="mt-4 btn btn-success" onClick={handleStartGame}>Play Game</button>
       ) : (

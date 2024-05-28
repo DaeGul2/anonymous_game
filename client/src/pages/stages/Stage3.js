@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import socket from '../../socket';
 import Modal from 'react-modal';
+import { Card, Button } from 'react-bootstrap';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -78,62 +79,49 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
     }
   };
 
+  const yesCount = answers.filter(answer => answer.response === 1).length;
+  const noCount = answers.filter(answer => answer.response === 0).length;
+
   return (
-    <div>
-      {isOwner ? (
-        <div>
-          <h3>질문: {question?.content}</h3>
-          <button className="btn btn-primary" onClick={handleRevealResults}>결과 공개</button>
-        </div>
-      ) : (
-        <div>
-          <h2>질문: {question?.content}</h2>
-        </div>
-      )}
-      {answers.length > 0 && (
-        <div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>답변</th>
-                <th>설명</th>
-              </tr>
-            </thead>
-            <tbody>
+    <div className="container mt-5">
+      <Card className="mb-4">
+        <Card.Body>
+          <Card.Title className="text-center mb-4" style={{ fontSize: '2em', fontWeight: 'bold' }}>
+            {question?.content}
+          </Card.Title>
+          <div className="answer-summary">
+            <div>Yes: {yesCount}</div>
+            <div>No: {noCount}</div>
+          </div>
+          {isOwner && (
+            <div className="text-center mt-3">
+              <Button variant="primary" onClick={handleRevealResults}>결과 공개</Button>
+            </div>
+          )}
+          {answers.length > 0 && (
+            <div className="mt-4">
               {answers.map((answer, index) => (
-                <tr key={index}>
-                  <td></td>
-                  <td>{answer.response === 1 ? 'Yes' : 'No'}</td>
-                  <td>{answer.explanation}</td>
-                </tr>
+                <div key={index} className="info-punishment">
+                  <div>{answer.response === 1 ? 'Yes' : 'No'}</div>
+                  <div>{answer.explanation}</div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {hintSettings?.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>정보</th>
-              <th>벌칙</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {hintSettings.map((setting, index) => (
-              <tr key={index}>
-                <td>{setting.infoType}</td>
-                <td>{setting.punishment}</td>
-                <td>
-                  <button className='btn btn-success' onClick={() => handleShowUserInfos(setting.infoType)}>수행하고 정보공개</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </div>
+          )}
+          {hintSettings?.length > 0 && (
+            <div className="mt-4">
+              {hintSettings.map((setting, index) => (
+                <div key={index} className="info-punishment">
+                  <div>{setting.infoType}</div>
+                  <div>{setting.punishment}</div>
+                  <Button variant="success" onClick={() => handleShowUserInfos(setting.infoType)}>수행하고 정보공개</Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
       <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)} ariaHideApp={false}>
         <h1>Question : {question?.content}</h1>
         <h2>who ask this question?
@@ -142,7 +130,6 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
         <table className="table">
           <thead>
             <tr>
-
               <th>{selectedInfoType}</th>
               <th>Response</th>
               <th>Explanation</th>
@@ -151,17 +138,11 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
           <tbody>
             {userInfos.map((info, index) => (
               <tr key={index}>
-
                 <td>{info.infoValue}</td>
                 <td>{info.response}</td>
                 <td>{info.explanation}</td>
               </tr>
             ))}
-
-
-
-
-
           </tbody>
         </table>
         <button onClick={() => setIsModalOpen(false)} className="btn btn-primary">닫기</button>
