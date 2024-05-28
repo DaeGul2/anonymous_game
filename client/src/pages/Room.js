@@ -220,7 +220,7 @@ function Room() {
           {currentStage === 0 && <Stage0 />}
           {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
           {currentStage === 2 && <Stage2 isOwner={isOwner} roomId={roomId} onStageChange={handleStageChange} setSelectedQuestionId={setSelectedQuestionId} />}
-          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} />}
+          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} hintSettings={room?.hintSettings}/>}
           {currentStage === 4 && <Stage4 />}
           {currentStage === 5 && <Stage5 />}
           {currentStage === 6 && <Stage6 />}

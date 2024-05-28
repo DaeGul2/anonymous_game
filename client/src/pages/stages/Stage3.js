@@ -9,7 +9,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-function Stage3({ roomId, isOwner, questionId }) {
+function Stage3({ roomId, isOwner, questionId, hintSettings }) {
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
 
@@ -88,6 +88,26 @@ function Stage3({ roomId, isOwner, questionId }) {
           </table>
         </div>
       )}
+      {hintSettings?.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>정보</th>
+                <th>벌칙</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {hintSettings?.map((setting, index) => (
+                <tr key={index}>
+                  <td>{setting.infoType}</td>
+                  <td>{setting.punishment}</td>
+                  <td><button className='btn btn-success'>수행하고 정보공개</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
     </div>
   );
 }
