@@ -100,16 +100,12 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
     <div className="container mt-4">
       <Card className="mb-4">
         <Card.Header as="h2" className="text-center">
-          질문 선택단계
+          Choose Question
         </Card.Header>
         <Card.Body>
           <Table striped bordered hover>
             <thead>
-              <tr>
-                <th>#</th>
-                <th>내용</th>
-                <th>Open</th>
-              </tr>
+              
             </thead>
             <tbody>
               {questions.map((question, index) => (
