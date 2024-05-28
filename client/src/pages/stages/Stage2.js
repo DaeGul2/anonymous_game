@@ -97,38 +97,32 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
   };
 
   return (
-    <div className="container mt-4">
-      <Card className="mb-4">
-        <Card.Header as="h2" className="text-center">
-          Choose Question
-        </Card.Header>
-        <Card.Body>
-          <Table striped bordered hover>
-            <thead>
-              
-            </thead>
-            <tbody>
-              {questions.map((question, index) => (
-                <tr key={question._id}>
-                  <td>{index + 1}</td>
-                  <td>{question.content}</td>
-                  <td className="text-center">
-                    {question.isFinished ? (
-                      <FontAwesomeIcon icon={solidHeart} className="text-muted" />
-                    ) : (
-                      isOwner && (
-                        <Button variant="link" onClick={() => handleSelectQuestion(question)}>
-                          <FontAwesomeIcon icon={regularHeart} className="text-danger" />
-                        </Button>
-                      )
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card.Body>
-      </Card>
+    <div className="container mt-4" style={{ maxWidth: '100%' }}>
+      <div className="mb-4" style={{ width: '100%' }}>
+        <h2 className="text-center mb-4">Choose Question</h2>
+        <Table striped bordered hover>
+          
+          <tbody>
+            {questions.map((question, index) => (
+              <tr  key={question._id}>
+                
+                <td >{question.content}</td>
+                <td className="text-center">
+                  {question.isFinished ? (
+                    <FontAwesomeIcon icon={solidHeart} className="text-muted" />
+                  ) : (
+                    isOwner && (
+                      <Button variant="link" onClick={() => handleSelectQuestion(question)}>
+                        <FontAwesomeIcon icon={regularHeart} className="text-danger" />
+                      </Button>
+                    )
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
 
       <Modal isOpen={modalIsOpen} ariaHideApp={false} className="modal-dialog-centered">
         <Card>
@@ -146,7 +140,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
                 </Form.Select>
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Explanation(not necessary)</Form.Label>
+                <Form.Label>Explanation (not necessary)</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
@@ -154,9 +148,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
                   onChange={(e) => setExplanation(e.target.value)}
                 />
               </Form.Group>
-              <Button variant="secondary" onClick={() => setModalIsOpen(false)}>
-                Close
-              </Button>
+              
             </Form>
           </Card.Body>
         </Card>

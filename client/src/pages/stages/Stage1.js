@@ -38,7 +38,7 @@ function Stage1({ togglePending, roomId }) {
   }, [text]);
 
   const handleTimeout = async () => {
-    console.log("텍스트 : ", textRef.current);
+    
 
     await submitQuestion(textRef.current);
     setModalIsOpen(false);
@@ -55,7 +55,7 @@ function Stage1({ togglePending, roomId }) {
 
   const handleTextChange = (e) => {
     setText(e.target.value);
-    console.log("Input Text: ", e.target.value);
+    
   };
 
   return (
@@ -66,12 +66,16 @@ function Stage1({ togglePending, roomId }) {
           <h2>Time left: {timeLeft}s</h2>
           <div>
             <label>Ask questions (50 characters max):</label>
-            <p>guarantee that all questions will be anonymous</p>
+            <ul>
+            <li>Guarantee that all questions will be anonymous</li>
+            <li>Answer has to be <b style={{color:'red'}}>Yes</b> or<b style={{color:'red'}}> No</b></li>
+            </ul>
             <input
               type="text"
               value={text}
               onChange={handleTextChange}
               maxLength={50}
+              style={{width:'100%'}}
             />
           </div>
         </Modal>
