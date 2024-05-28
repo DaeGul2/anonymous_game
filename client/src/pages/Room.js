@@ -26,8 +26,7 @@ function Room() {
   const [userId, setUserId] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
-  const [userInfo, setUserInfo] = useState({});
-  const [isPending, setIsPending] = useState(false);
+  const [userInfo, setUserInfo] = useState({}); 
   const [currentStage, setCurrentStage] = useState(0);
   const [selectedQuestionId, setSelectedQuestionId] = useState(null);
 
@@ -37,7 +36,6 @@ function Room() {
         const response = await axiosInstance.get(`/api/games/${roomId}`);
         setRoom(response.data);
         setCurrentStage(response.data.currentStage);
-        setIsPending(response.data.isPending);
       } catch (error) {
         console.error('Error fetching room:', error.response?.data || error.message);
       }
@@ -66,7 +64,6 @@ function Room() {
         setRoom(updatedRoom);
         setCurrentStage(updatedRoom.currentStage);
         setIsParticipant(updatedRoom.participants.includes(userId));
-        setIsPending(updatedRoom.isPending);
       }
     };
 
@@ -78,18 +75,7 @@ function Room() {
       setCurrentStage(stage);
     };
 
-    const handlePendingToggled = (isPending) => {
-      setIsPending(isPending);
-      if (isPending) {
-        setTimeout(async () => {
-          try {
-            await axiosInstance.post(`/api/rooms/togglePending/${roomId}`);
-          } catch (error) {
-            console.error('Error toggling pending:', error.response?.data || error.message);
-          }
-        }, 10000); // 10초 후 isPending을 false로 설정
-      }
-    };
+    
 
     const handleQuestionSelected = (roomId, questionId, isOwner) => {
       setSelectedQuestionId(questionId);
@@ -98,14 +84,12 @@ function Room() {
     socket.on('roomUpdated', handleRoomUpdated);
     socket.on('stageChanged', handleStageChanged);
     socket.on('gameStarted', handleGameStarted);
-    socket.on('pendingToggled', handlePendingToggled);
     socket.on('questionSelected', handleQuestionSelected);
 
     return () => {
       socket.off('roomUpdated', handleRoomUpdated);
       socket.off('stageChanged', handleStageChanged);
       socket.off('gameStarted', handleGameStarted);
-      socket.off('pendingToggled', handlePendingToggled);
       socket.off('questionSelected', handleQuestionSelected);
     };
   }, [roomId, userId]);
@@ -118,18 +102,7 @@ function Room() {
     }
   }, [room, userId, roomId]);
 
-  useEffect(() => {
-    if (isPending) {
-      window.history.pushState(null, '', window.location.href);
-      const handlePopState = () => {
-        window.history.pushState(null, '', window.location.href);
-      };
-      window.addEventListener('popstate', handlePopState);
-      return () => {
-        window.removeEventListener('popstate', handlePopState);
-      };
-    }
-  }, [isPending]);
+  
 
   const handleChange = (e) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -155,13 +128,7 @@ function Room() {
     socket.emit('stageChanged', roomId, newStage);
   };
 
-  const togglePending = async () => {
-    try {
-      await axiosInstance.post(`/api/rooms/togglePending/${roomId}`);
-    } catch (error) {
-      console.error('Error toggling pending:', error.response?.data || error.message);
-    }
-  };
+
 
   const [open, setOpen] = useState(false);
 
@@ -241,7 +208,7 @@ function Room() {
             )}
 
             {currentStage === 0 && <Stage0 />}
-            {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
+            {currentStage === 1 && <Stage1 roomId={roomId} />}
             {currentStage === 2 && (
               <Stage2
                 isOwner={isOwner}

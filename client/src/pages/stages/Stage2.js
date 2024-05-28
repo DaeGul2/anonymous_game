@@ -73,13 +73,15 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
   }, [explanation]);
 
   const handleTimeout = async () => {
-    await submitAnswer();
-    setModalIsOpen(false);
-    setSelectedQuestionId(selectedQuestion._id); // questionId를 설정
-    onStageChange(3); // Stage3로 이동
-    socket.emit('stageChanged', roomId, 3); // 모든 사용자에게 Stage3로 변경 알림
-    socket.emit('questionSelected', roomId, selectedQuestion._id, isOwner); // 선택된 질문 및 isOwner 정보 전송
-  };
+    if (modalIsOpen) {  // Modal이 열려 있는 경우에만 handleTimeout 실행
+        await submitAnswer();
+        setModalIsOpen(false);
+        setSelectedQuestionId(selectedQuestion._id);
+        onStageChange(3);
+        socket.emit('stageChanged', roomId, 3);
+        socket.emit('questionSelected', roomId, selectedQuestion._id, isOwner);
+    }
+};
 
   const submitAnswer = async () => {
     try {

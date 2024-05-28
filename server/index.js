@@ -92,9 +92,12 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
       });
 
       socket.on('stageChanged', (roomId, stage) => {
-        io.to(roomId).emit('stageChanged', stage);
-        console.log(`Stage changed to ${stage} in room ${roomId}`);
-      });
+        const currentRoom = io.sockets.adapter.rooms.get(roomId);
+        if (currentRoom && currentRoom.stage !== stage) {
+            io.to(roomId).emit('stageChanged', stage);
+            console.log(`Stage changed to ${stage} in room ${roomId}`);
+        }
+    });
 
       socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
