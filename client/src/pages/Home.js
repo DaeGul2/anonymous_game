@@ -88,8 +88,8 @@ function Home() {
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>현재 진행 중인 게임들</h2>
-        <Link to="/create-room" className="btn btn-success">방 만들기</Link>
+        
+        <Link to="/create-room" className="btn btn-success">+</Link>
       </div>
       <div className="row">
         {rooms.map(room => (

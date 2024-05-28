@@ -21,7 +21,6 @@ function Navigation() {
     const checkLoginStatus = async () => {
       try {
         const response = await axiosInstance.get('/api/auth/status');
-        console.log("checklogin", response)
         if (response.data.loggedIn) {
           setLoggedIn(true);
           setUserId(response.data.user_id);
@@ -61,25 +60,27 @@ function Navigation() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light">
-      <Link className="navbar-brand" to="/">Anonymous Game</Link>
-      <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span className="navbar-toggler-icon"></span>
-      </button>
-      <div className="collapse navbar-collapse" id="navbarNav">
-        {loggedIn ? (
-          <div className="ml-auto">
-            <span className="navbar-text">{userId}님 반갑습니다.</span>
-            <button className="ml-2 btn btn-secondary" onClick={handleLogout}>로그아웃</button>
-          </div>
-        ) : (
-          <form className="ml-auto form-inline" onSubmit={handleLogin}>
-            <input type="text" className="mr-2 form-control" name="user_id" placeholder="User ID" onChange={handleChange} required />
-            <input type="password" className="mr-2 form-control" name="password" placeholder="Password" onChange={handleChange} required />
-            <button type="submit" className="btn btn-primary">로그인</button>
-            <Link to="/register" className="ml-2 btn btn-secondary">회원가입</Link>
-          </form>
-        )}
+    <nav className="navbar navbar-expand-lg navbar-light bg-light mb-4">
+      <div className="container">
+        <Link className="navbar-brand" to="/">Anonymous Game</Link>
+        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span className="navbar-toggler-icon"></span>
+        </button>
+        <div className="collapse navbar-collapse" id="navbarNav">
+          {loggedIn ? (
+            <div className="ml-auto d-flex align-items-center">
+              <span className="navbar-text mr-3">{userId}님 반갑습니다.</span>
+              <button className="btn btn-secondary" onClick={handleLogout}>로그아웃</button>
+            </div>
+          ) : (
+            <form className="ml-auto form-inline d-flex align-items-center" onSubmit={handleLogin}>
+              <input type="text" className="form-control mr-2" name="user_id" placeholder="User ID" onChange={handleChange} required />
+              <input type="password" className="form-control mr-2" name="password" placeholder="Password" onChange={handleChange} required />
+              <button type="submit" className="btn btn-primary mr-2">로그인</button>
+              <Link to="/register" className="btn btn-secondary">회원가입</Link>
+            </form>
+          )}
+        </div>
       </div>
     </nav>
   );

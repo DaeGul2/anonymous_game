@@ -1,4 +1,6 @@
 /* global.css */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap');
+
 body {
   font-family: 'Nunito', sans-serif;
   background-color: #FAD961;
@@ -11,6 +13,20 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Nunito', sans-serif;
 }
 
+.navbar {
+  background-color: #FFD700 !important;
+  font-family: 'Quicksand', sans-serif;
+  font-weight:bold;
+}
+
+.navbar-brand, .navbar-text, .nav-link, .btn {
+  color: white !important;
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'><path stroke='rgba(255, 255, 255, 1)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/></svg>");
+}
+
 .btn-primary {
   background-color: #FF6F61;
   border: none;
@@ -20,17 +36,13 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #FF8563;
 }
 
-.btn-success {
+.btn-secondary {
   background-color: #4CAF50;
   border: none;
 }
 
-.btn-success:hover {
+.btn-secondary:hover {
   background-color: #45A049;
-}
-
-.navbar {
-  background-color: #FFD700;
 }
 
 .card {
@@ -61,4 +73,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .modal-title {
   font-weight: bold;
+}
+
+.ml-auto {
+  margin-left: auto;
 }
