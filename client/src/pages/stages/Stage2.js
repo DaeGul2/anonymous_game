@@ -125,6 +125,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
 
       <Modal isOpen={modalIsOpen} ariaHideApp={false}>
         <h2>Time left: {timeLeft}s</h2>
+        <h3>question : {selectedQuestion?.content}</h3>
         <div>
           <label>Yes/No</label>
           <select value={response} onChange={(e) => setResponse(Number(e.target.value))}>

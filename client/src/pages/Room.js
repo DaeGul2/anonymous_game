@@ -172,7 +172,24 @@ function Room() {
         <p>Participants: {room?.participants.length}</p>
         <p>Max Participants: {room?.maxParticipants}</p>
         <p>Owner: {room?.ownerId}</p> */}
-        <p>Hint Settings: {JSON.stringify(room?.hintSettings)}</p>
+         {room?.hintSettings.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>정보</th>
+                <th>벌칙</th>
+              </tr>
+            </thead>
+            <tbody>
+              {room?.hintSettings.map((setting, index) => (
+                <tr key={index}>
+                  <td>{setting.infoType}</td>
+                  <td>{setting.punishment}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         {/* <p>Current User ID: {userId}</p>
         <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
         <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>

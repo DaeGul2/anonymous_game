@@ -57,8 +57,8 @@ function Stage3({ roomId, isOwner, questionId }) {
     <div>
       {isOwner ? (
         <div>
-          <h2>질문: {question?.content}</h2>
-          <button className="btn btn-primary" onClick={handleRevealResults}>결과 공개</button>
+          <h3>질문: {question?.content}</h3>
+          
         </div>
       ) : (
         <div>
@@ -67,11 +67,11 @@ function Stage3({ roomId, isOwner, questionId }) {
       )}
       {answers.length > 0 && (
         <div>
-          <h3>답변 목록</h3>
-          <table>
+          
+          <table className="table">
             <thead>
               <tr>
-                <th>유저 ID</th>
+                <th></th>
                 <th>답변</th>
                 <th>설명</th>
               </tr>
@@ -79,7 +79,7 @@ function Stage3({ roomId, isOwner, questionId }) {
             <tbody>
               {answers.map((answer, index) => (
                 <tr key={index}>
-                  <td>{answer.userId}</td>
+                  <td></td>
                   <td>{answer.response === 1 ? 'Yes' : 'No'}</td>
                   <td>{answer.explanation}</td>
                 </tr>
