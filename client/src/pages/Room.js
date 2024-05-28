@@ -1,5 +1,6 @@
 // Room.js
 import React, { useState, useEffect } from 'react';
+import { Collapse, Card, Button } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import socket from '../socket';
@@ -162,39 +163,52 @@ function Room() {
       console.error('Error toggling pending:', error.response?.data || error.message);
     }
   };
+  const [open, setOpen] = useState(false);
 
   return (
     <div>
-      <div>
-        <h2>{room?.roomName}</h2>
-        {/* <p>Room ID: {room?._id}</p>
-        <p>Current Stage: {currentStage}</p>
-        <p>Participants: {room?.participants.length}</p>
-        <p>Max Participants: {room?.maxParticipants}</p>
-        <p>Owner: {room?.ownerId}</p> */}
-         {room?.hintSettings.length > 0 && (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>정보</th>
-                <th>벌칙</th>
-              </tr>
-            </thead>
-            <tbody>
-              {room?.hintSettings.map((setting, index) => (
-                <tr key={index}>
-                  <td>{setting.infoType}</td>
-                  <td>{setting.punishment}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {/* <p>Current User ID: {userId}</p>
-        <p>Is Owner: {isOwner ? 'Yes' : 'No'}</p>
-        <p>Is Participant: {isParticipant ? 'Yes' : 'No'}</p>
-        <p>Is Pending: {isPending ? 'Yes' : 'No'}</p> */}
-        <p>참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
+      <div className="container mt-4">
+        <Card className="mb-4">
+          <Card.Header as="h2" className="text-center">
+            {room?.roomName}
+          </Card.Header>
+          <Card.Body>
+            <p className="text-muted">참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
+
+            <Button
+              onClick={() => setOpen(!open)}
+              aria-controls="hint-settings-collapse"
+              aria-expanded={open}
+              variant="primary"
+              className="mb-3"
+            >
+              {open ? 'close' : 'open'}
+            </Button>
+
+            <Collapse in={open}>
+              <div id="hint-settings-collapse">
+                {room?.hintSettings.length > 0 && (
+                  <table className="table table-striped">
+                    <thead>
+                      <tr>
+                        <th>정보</th>
+                        <th>벌칙</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {room?.hintSettings.map((setting, index) => (
+                        <tr key={index}>
+                          <td>{setting.infoType}</td>
+                          <td>{setting.punishment}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </Collapse>
+          </Card.Body>
+        </Card>
       </div>
       {!isParticipant && (
         <div>
@@ -216,11 +230,11 @@ function Room() {
       )}
       {isParticipant && (
         <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={currentStage}/> : <Player />}
+          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={currentStage} /> : <Player />}
           {currentStage === 0 && <Stage0 />}
           {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
           {currentStage === 2 && <Stage2 isOwner={isOwner} roomId={roomId} onStageChange={handleStageChange} setSelectedQuestionId={setSelectedQuestionId} />}
-          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} hintSettings={room?.hintSettings}/>}
+          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} hintSettings={room?.hintSettings} />}
           {currentStage === 4 && <Stage4 />}
           {currentStage === 5 && <Stage5 />}
           {currentStage === 6 && <Stage6 />}
