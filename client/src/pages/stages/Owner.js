@@ -1,3 +1,4 @@
+// Owner.js
 import React from 'react';
 import socket from '../../socket';
 import axios from 'axios';
@@ -11,8 +12,7 @@ const axiosInstance = axios.create({
 function Owner({ roomId, onStageChange, currentStage }) {
   const handleNextStage = async () => {
     try {
-      const response = await axiosInstance.post(`/api/rooms/changeStage/${roomId}`);
-      const nextStage = response.data.next_stage;
+      const nextStage = currentStage + 1;
       socket.emit('stageChanged', roomId, nextStage);
       onStageChange(nextStage);
 
@@ -21,14 +21,13 @@ function Owner({ roomId, onStageChange, currentStage }) {
       const updatedRoom = roomResponse.data;
       socket.emit('roomUpdated', updatedRoom);
     } catch (error) {
-      console.error('Error changing stage:', error.response.data);
+      console.error('Error changing stage:', error.response?.data || error.message);
     }
   };
 
   const handleBackStage = async () => {
     try {
-      const response = await axiosInstance.post(`/api/rooms/backStage/${roomId}`);
-      const nextStage = response.data.next_stage;
+      const nextStage = currentStage - 1;
       socket.emit('stageChanged', roomId, nextStage);
       onStageChange(nextStage);
 
@@ -37,14 +36,13 @@ function Owner({ roomId, onStageChange, currentStage }) {
       const updatedRoom = roomResponse.data;
       socket.emit('roomUpdated', updatedRoom);
     } catch (error) {
-      console.error('Error changing stage:', error.response.data);
+      console.error('Error changing stage:', error.response?.data || error.message);
     }
   };
 
   const handleStartGame = async () => {
     try {
-      const response = await axiosInstance.post(`/api/rooms/start/${roomId}`);
-      const newStage = response.data.stage;
+      const newStage = 1; // 게임 시작 시 첫 번째 스테이지로 설정
       socket.emit('gameStarted', roomId, newStage);
       onStageChange(newStage);
 
@@ -53,7 +51,7 @@ function Owner({ roomId, onStageChange, currentStage }) {
       const updatedRoom = roomResponse.data;
       socket.emit('roomUpdated', updatedRoom);
     } catch (error) {
-      console.error('Error starting game:', error.response.data);
+      console.error('Error starting game:', error.response?.data || error.message);
     }
   };
 
@@ -61,14 +59,11 @@ function Owner({ roomId, onStageChange, currentStage }) {
     <div>
       <h3>Owner Controls</h3>
       {currentStage === 0 ? (
-
         <button className="mt-4 btn btn-success" onClick={handleStartGame}>Play Game</button>
       ) : (
         <div>
-          
-          {currentStage>2&&<button className="mt-4 btn btn-danger" onClick={handleBackStage}>Back Stage</button>}
-          <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>
-          
+          {currentStage > 2 && <button className="mt-4 btn btn-danger" onClick={handleBackStage}>Back Stage</button>}
+          {currentStage < 7 && <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>}
         </div>
       )}
     </div>

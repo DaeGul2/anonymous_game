@@ -152,6 +152,7 @@ function Room() {
 
   const handleStageChange = (newStage) => {
     setCurrentStage(newStage);
+    socket.emit('stageChanged', roomId, newStage);
   };
 
   const togglePending = async () => {
