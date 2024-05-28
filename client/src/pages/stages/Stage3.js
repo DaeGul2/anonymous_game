@@ -93,11 +93,7 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
             <div>Yes: {yesCount}</div>
             <div>No: {noCount}</div>
           </div>
-          {isOwner && (
-            <div className="text-center mt-3">
-              <Button variant="primary" onClick={handleRevealResults}>결과 공개</Button>
-            </div>
-          )}
+          
           {answers.length > 0 && (
             <div className="mt-4">
               {answers.map((answer, index) => (
@@ -114,7 +110,7 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
                 <div key={index} className="info-punishment">
                   <div>{setting.infoType}</div>
                   <div>{setting.punishment}</div>
-                  <Button variant="success" onClick={() => handleShowUserInfos(setting.infoType)}>수행하고 정보공개</Button>
+                  {isOwner&&<Button variant="success" onClick={() => handleShowUserInfos(setting.infoType)}>Open</Button>}
                 </div>
               ))}
             </div>

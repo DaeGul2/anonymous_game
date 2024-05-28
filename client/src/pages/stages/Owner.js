@@ -39,6 +39,21 @@ function Owner({ roomId, onStageChange, currentStage }) {
       console.error('Error changing stage:', error.response?.data || error.message);
     }
   };
+  
+  const goToStageZero = async () => {
+    try {
+      const newStage = 0; // 게임 시작 시 첫 번째 스테이지로 설정
+      socket.emit('stageChanged', roomId, newStage);
+      onStageChange(newStage);
+
+      // 방 정보 업데이트
+      const roomResponse = await axiosInstance.get(`/api/games/${roomId}`);
+      const updatedRoom = roomResponse.data;
+      socket.emit('roomUpdated', updatedRoom);
+    } catch (error) {
+      console.error('Error starting game:', error.response?.data || error.message);
+    }
+  };
 
   const handleStartGame = async () => {
     try {
@@ -64,6 +79,7 @@ function Owner({ roomId, onStageChange, currentStage }) {
         <div>
           {currentStage > 2 && <button className="mt-4 btn btn-danger" onClick={handleBackStage}>Back Stage</button>}
           {currentStage < 7 && <button className="mt-4 btn btn-primary" onClick={handleNextStage}>Next Stage</button>}
+          <button className='mt-4 btn btn-success' onClick={goToStageZero}>goTozero</button>
         </div>
       )}
     </div>

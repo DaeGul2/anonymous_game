@@ -65,7 +65,8 @@ function Stage1({ togglePending, roomId }) {
         <Modal isOpen={modalIsOpen} ariaHideApp={false}>
           <h2>Time left: {timeLeft}s</h2>
           <div>
-            <label>Input Text (50 characters max):</label>
+            <label>Ask questions (50 characters max):</label>
+            <p>guarantee that all questions will be anonymous</p>
             <input
               type="text"
               value={text}

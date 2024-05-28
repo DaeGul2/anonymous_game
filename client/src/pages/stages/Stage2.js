@@ -39,7 +39,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
     socket.on('openAnswerModal', (question) => {
       setSelectedQuestion(question);
       setModalIsOpen(true);
-      setTimeLeft(20);
+      setTimeLeft(30);
     });
 
     return () => {
@@ -146,7 +146,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
                 </Form.Select>
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Explanation</Form.Label>
+                <Form.Label>Explanation(not necessary)</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
