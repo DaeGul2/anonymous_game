@@ -94,7 +94,11 @@ const getUserInfosForQuestion = async (req, res) => {
       return { userId, infoValue: userInfo ? userInfo.info.get(infoType) : null };
     });
 
-    res.status(200).json(userInfos);
+    // 질문 생성자의 userInfo에서 특정 infoType 값을 가져오기
+    const creatorInfo = room.userInfo.find(info => info.user.equals(question.creatorId));
+    const creatorInfoValue = creatorInfo ? creatorInfo.info.get(infoType) : null;
+
+    res.status(200).json({ userInfos, creatorInfo: { userId: question.creatorId, infoValue: creatorInfoValue } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

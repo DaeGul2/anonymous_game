@@ -13,6 +13,7 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [userInfos, setUserInfos] = useState([]);
+  const [creatorInfo, setCreatorInfo] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInfoType, setSelectedInfoType] = useState('');
 
@@ -59,15 +60,17 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
   const handleShowUserInfos = async (infoType) => {
     try {
       const response = await axiosInstance.get(`/api/questions/getUserInfosForQuestion/${roomId}/${questionId}/${infoType}`);
-      const userInfosWithAnswers = response.data.map((info) => {
+      const { userInfos, creatorInfo } = response.data;
+      const userInfosWithAnswers = userInfos.map((info) => {
         const answer = answers.find(answer => answer.userId === info.userId);
-        return { 
-          ...info, 
+        return {
+          ...info,
           response: answer ? (answer.response === 1 ? 'Yes' : 'No') : 'No response',
           explanation: answer ? answer.explanation : 'No explanation'
         };
       });
       setUserInfos(userInfosWithAnswers);
+      setCreatorInfo(creatorInfo);
       setSelectedInfoType(infoType);
       setIsModalOpen(true);
     } catch (error) {
@@ -132,11 +135,14 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
         </table>
       )}
       <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)} ariaHideApp={false}>
-        <h2>User Info for {question?.content}</h2>
+        <h1>Question : {question?.content}</h1>
+        <h2>who ask this question?
+          <p>{selectedInfoType} : {creatorInfo.infoValue}</p></h2>
+
         <table className="table">
           <thead>
             <tr>
-              
+
               <th>{selectedInfoType}</th>
               <th>Response</th>
               <th>Explanation</th>
@@ -145,12 +151,17 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
           <tbody>
             {userInfos.map((info, index) => (
               <tr key={index}>
-                
+
                 <td>{info.infoValue}</td>
                 <td>{info.response}</td>
                 <td>{info.explanation}</td>
               </tr>
             ))}
+
+
+
+
+
           </tbody>
         </table>
         <button onClick={() => setIsModalOpen(false)} className="btn btn-primary">닫기</button>
