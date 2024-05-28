@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Pagination from 'react-js-pagination';
 
+
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -84,9 +86,11 @@ function Home() {
   };
 
   return (
-    <div>
-      <h2>현재 진행 중인 게임들</h2>
-      <Link to="/create-room" className="mb-4 btn btn-success">방 만들기</Link>
+    <div className="container mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>현재 진행 중인 게임들</h2>
+        <Link to="/create-room" className="btn btn-success">방 만들기</Link>
+      </div>
       <div className="row">
         {rooms.map(room => (
           <div key={room._id} className="col-md-4">
@@ -104,15 +108,17 @@ function Home() {
           </div>
         ))}
       </div>
-      <Pagination
-        activePage={page}
-        itemsCountPerPage={10}
-        totalItemsCount={totalPages * 10}
-        pageRangeDisplayed={5}
-        onChange={handlePageChange}
-        itemClass="page-item"
-        linkClass="page-link"
-      />
+      <div className="d-flex justify-content-center">
+        <Pagination
+          activePage={page}
+          itemsCountPerPage={10}
+          totalItemsCount={totalPages * 10}
+          pageRangeDisplayed={5}
+          onChange={handlePageChange}
+          itemClass="page-item"
+          linkClass="page-link"
+        />
+      </div>
 
       {selectedRoom && (
         <div className="modal show" style={{ display: 'block' }} tabIndex="-1" role="dialog">

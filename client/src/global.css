@@ -1,22 +1,64 @@
 /* global.css */
 body {
-    font-family: 'Nunito', sans-serif;
-    background-color: #FAD961;
-    color: #333;
-    margin: 0;
-    padding: 0;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Nunito', sans-serif;
-  }
-  
-  .btn-primary {
-    background-color: #FF6F61;
-    border: none;
-  }
-  
-  .btn-primary:hover {
-    background-color: #FF8563;
-  }
-  
+  font-family: 'Nunito', sans-serif;
+  background-color: #FAD961;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Nunito', sans-serif;
+}
+
+.btn-primary {
+  background-color: #FF6F61;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #FF8563;
+}
+
+.btn-success {
+  background-color: #4CAF50;
+  border: none;
+}
+
+.btn-success:hover {
+  background-color: #45A049;
+}
+
+.navbar {
+  background-color: #FFD700;
+}
+
+.card {
+  background-color: #FFF3E0;
+  border: none;
+}
+
+.card-title {
+  font-weight: bold;
+}
+
+.card-text {
+  color: #333;
+}
+
+.page-item.active .page-link {
+  background-color: #FF6F61;
+  border-color: #FF6F61;
+}
+
+.modal-content {
+  background-color: #FFF3E0;
+}
+
+.modal-header, .modal-footer {
+  border: none;
+}
+
+.modal-title {
+  font-weight: bold;
+}
