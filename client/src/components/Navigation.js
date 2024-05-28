@@ -63,10 +63,13 @@ function Navigation() {
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <Link className="navbar-brand" to="/">Anonymous Game</Link>
-      <div className="collapse navbar-collapse">
+      <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span className="navbar-toggler-icon"></span>
+      </button>
+      <div className="collapse navbar-collapse" id="navbarNav">
         {loggedIn ? (
           <div className="ml-auto">
-            <span>{userId}님 반갑습니다.</span>
+            <span className="navbar-text">{userId}님 반갑습니다.</span>
             <button className="ml-2 btn btn-secondary" onClick={handleLogout}>로그아웃</button>
           </div>
         ) : (
