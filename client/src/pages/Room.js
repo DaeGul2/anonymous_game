@@ -1,6 +1,5 @@
-// Room.js
 import React, { useState, useEffect } from 'react';
-import { Collapse, Card, Button } from 'react-bootstrap';
+import { Collapse, Card, Button, Form } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import socket from '../socket';
@@ -163,83 +162,108 @@ function Room() {
       console.error('Error toggling pending:', error.response?.data || error.message);
     }
   };
+
   const [open, setOpen] = useState(false);
 
   return (
-    <div>
-      <div className="container mt-4">
-        <Card className="mb-4">
-          <Card.Header as="h2" className="text-center">
-            {room?.roomName}
-          </Card.Header>
-          <Card.Body>
-            <p className="text-muted">참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
+    <div className="container mt-4">
+      <Card className="mb-4">
+        <Card.Header as="h2" className="text-center">
+          {room?.roomName}
+        </Card.Header>
+        <Card.Body>
+          <p className="text-muted">참가인원 {room?.currentParticipants}/{room?.maxParticipants}</p>
 
-            <Button
-              onClick={() => setOpen(!open)}
-              aria-controls="hint-settings-collapse"
-              aria-expanded={open}
-              variant="primary"
-              className="mb-3"
-            >
-              {open ? 'close' : 'open'}
-            </Button>
+          <Button
+            onClick={() => setOpen(!open)}
+            aria-controls="hint-settings-collapse"
+            aria-expanded={open}
+            variant="primary"
+            className="mb-3"
+          >
+            {open ? 'close' : 'open'}
+          </Button>
 
-            <Collapse in={open}>
-              <div id="hint-settings-collapse">
-                {room?.hintSettings.length > 0 && (
-                  <table className="table table-striped">
-                    <thead>
-                      <tr>
-                        <th>정보</th>
-                        <th>벌칙</th>
+          <Collapse in={open}>
+            <div id="hint-settings-collapse">
+              {room?.hintSettings.length > 0 && (
+                <table className="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>정보</th>
+                      <th>벌칙</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {room?.hintSettings.map((setting, index) => (
+                      <tr key={index}>
+                        <td>{setting.infoType}</td>
+                        <td>{setting.punishment}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {room?.hintSettings.map((setting, index) => (
-                        <tr key={index}>
-                          <td>{setting.infoType}</td>
-                          <td>{setting.punishment}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </Collapse>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </Collapse>
+        </Card.Body>
+      </Card>
+
+      {!isParticipant && (
+        <Card className="mb-4">
+          <Card.Header as="h3">Fill in your info to join the room:</Card.Header>
+          <Card.Body>
+            <Form>
+              {room?.hintSettings.map((setting, index) => (
+                <Form.Group key={index} className="mb-3">
+                  <Form.Label>{setting.infoType}</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name={setting.infoType}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+              ))}
+              <Button className="btn btn-primary" onClick={handleJoin}>Join Room</Button>
+            </Form>
           </Card.Body>
         </Card>
-      </div>
-      {!isParticipant && (
-        <div>
-          <h3>Fill in your info to join the room:</h3>
-          {room?.hintSettings.map((setting, index) => (
-            <div key={index} className="form-group">
-              <label>{setting.infoType}</label>
-              <input
-                type="text"
-                className="form-control"
-                name={setting.infoType}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          ))}
-          <button className="btn btn-primary" onClick={handleJoin}>Join Room</button>
-        </div>
       )}
+
       {isParticipant && (
-        <div>
-          {isOwner ? <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={currentStage} /> : <Player />}
-          {currentStage === 0 && <Stage0 />}
-          {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
-          {currentStage === 2 && <Stage2 isOwner={isOwner} roomId={roomId} onStageChange={handleStageChange} setSelectedQuestionId={setSelectedQuestionId} />}
-          {currentStage === 3 && <Stage3 isOwner={isOwner} roomId={roomId} questionId={selectedQuestionId} hintSettings={room?.hintSettings} />}
-          {currentStage === 4 && <Stage4 />}
-          {currentStage === 5 && <Stage5 />}
-          {currentStage === 6 && <Stage6 />}
-          {currentStage === 7 && <Stage7 />}
-        </div>
+        <Card className="mb-4">
+          <Card.Body>
+            {isOwner ? (
+              <Owner roomId={roomId} onStageChange={handleStageChange} currentStage={currentStage} />
+            ) : (
+              <Player />
+            )}
+
+            {currentStage === 0 && <Stage0 />}
+            {currentStage === 1 && <Stage1 togglePending={togglePending} isPending={isPending} roomId={roomId} />}
+            {currentStage === 2 && (
+              <Stage2
+                isOwner={isOwner}
+                roomId={roomId}
+                onStageChange={handleStageChange}
+                setSelectedQuestionId={setSelectedQuestionId}
+              />
+            )}
+            {currentStage === 3 && (
+              <Stage3
+                isOwner={isOwner}
+                roomId={roomId}
+                questionId={selectedQuestionId}
+                hintSettings={room?.hintSettings}
+              />
+            )}
+            {currentStage === 4 && <Stage4 />}
+            {currentStage === 5 && <Stage5 />}
+            {currentStage === 6 && <Stage6 />}
+            {currentStage === 7 && <Stage7 />}
+          </Card.Body>
+        </Card>
       )}
     </div>
   );

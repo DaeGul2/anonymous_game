@@ -9,7 +9,7 @@ const axiosInstance = axios.create({
 });
 
 function Stage1({ togglePending, roomId }) {
-  const [timeLeft, setTimeLeft] = useState(10); // 10초 타이머
+  const [timeLeft, setTimeLeft] = useState(60); // 60초 타이머
   const [text, setText] = useState(' ');
   const [modalIsOpen, setModalIsOpen] = useState(true);
   const textRef = useRef(text);
@@ -61,7 +61,7 @@ function Stage1({ togglePending, roomId }) {
   return (
     <div>
       {!isSent && (<div>
-        <h2>질문 수집 단계</h2>
+        <h2>Question Lists</h2>
         <Modal isOpen={modalIsOpen} ariaHideApp={false}>
           <h2>Time left: {timeLeft}s</h2>
           <div>

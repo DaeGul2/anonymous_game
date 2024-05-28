@@ -1,8 +1,11 @@
-// Stage2.js
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
 import socket from '../../socket';
+import { Table, Button, Form, Card } from 'react-bootstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHeart as solidHeart } from '@fortawesome/free-solid-svg-icons';
+import { faHeart as regularHeart } from '@fortawesome/free-regular-svg-icons';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -94,49 +97,73 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
   };
 
   return (
-    <div>
-      <h2>질문 선택단계</h2>
-      <table className='table'>
-        <thead>
-          <tr>
-            <th></th>
-            <th>내용</th>
-            <th>Open</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {questions.map((question, index) => (
-            <tr key={question._id}>
-              <td>{index + 1}</td>
-              <td>{question.content}</td>
-              <td>{question.isFinished ? '답변완료' : '답변미완료'}</td>
-              {isOwner && !question.isFinished && (
-                <td>
-                  <button className="mt-4 btn btn-primary" onClick={() => handleSelectQuestion(question)}>
-                    선택
-                  </button>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="container mt-4">
+      <Card className="mb-4">
+        <Card.Header as="h2" className="text-center">
+          질문 선택단계
+        </Card.Header>
+        <Card.Body>
+          <Table striped bordered hover>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>내용</th>
+                <th>Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              {questions.map((question, index) => (
+                <tr key={question._id}>
+                  <td>{index + 1}</td>
+                  <td>{question.content}</td>
+                  <td className="text-center">
+                    {question.isFinished ? (
+                      <FontAwesomeIcon icon={solidHeart} className="text-muted" />
+                    ) : (
+                      isOwner && (
+                        <Button variant="link" onClick={() => handleSelectQuestion(question)}>
+                          <FontAwesomeIcon icon={regularHeart} className="text-danger" />
+                        </Button>
+                      )
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card.Body>
+      </Card>
 
-      <Modal isOpen={modalIsOpen} ariaHideApp={false}>
-        <h2>Time left: {timeLeft}s</h2>
-        <h3>question : {selectedQuestion?.content}</h3>
-        <div>
-          <label>Yes/No</label>
-          <select value={response} onChange={(e) => setResponse(Number(e.target.value))}>
-            <option value={1}>Yes</option>
-            <option value={0}>No</option>
-          </select>
-        </div>
-        <div>
-          <label>Explanation</label>
-          <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} />
-        </div>
+      <Modal isOpen={modalIsOpen} ariaHideApp={false} className="modal-dialog-centered">
+        <Card>
+          <Card.Header>
+            <h2>Time left: {timeLeft}s</h2>
+          </Card.Header>
+          <Card.Body>
+            <h3>question: {selectedQuestion?.content}</h3>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Yes/No</Form.Label>
+                <Form.Select value={response} onChange={(e) => setResponse(Number(e.target.value))}>
+                  <option value={1}>Yes</option>
+                  <option value={0}>No</option>
+                </Form.Select>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Explanation</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={explanation}
+                  onChange={(e) => setExplanation(e.target.value)}
+                />
+              </Form.Group>
+              <Button variant="secondary" onClick={() => setModalIsOpen(false)}>
+                Close
+              </Button>
+            </Form>
+          </Card.Body>
+        </Card>
       </Modal>
     </div>
   );
