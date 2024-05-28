@@ -101,7 +101,7 @@ function Home() {
                 {room.isPlaying ? (
                   <p className="text-danger">게임 진행 중</p>
                 ) : (
-                  <button className="btn btn-primary" onClick={() => setSelectedRoom(room._id)}>입장</button>
+                  <button className="btn btn-primary" onClick={() => setSelectedRoom(room._id)}>Enter</button>
                 )}
               </div>
             </div>

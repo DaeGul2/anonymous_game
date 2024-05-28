@@ -1,5 +1,5 @@
 /* global.css */
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
 body {
   font-family: 'Nunito', sans-serif;
@@ -10,13 +10,12 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .navbar {
   background-color: #FFD700 !important;
-  font-family: 'Quicksand', sans-serif;
-  font-weight:bold;
+  font-family: 'Poppins', sans-serif;
 }
 
 .navbar-brand, .navbar-text, .nav-link, .btn {
@@ -36,18 +35,32 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #FF8563;
 }
 
-.btn-secondary {
-  background-color: #4CAF50;
+.btn-success {
+  background-color: #28a745;
   border: none;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  border: none;
+  color: white;
 }
 
 .btn-secondary:hover {
-  background-color: #45A049;
+  background-color: #5a6268;
 }
 
 .card {
   background-color: #FFF3E0;
   border: none;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .card-title {
@@ -77,4 +90,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .ml-auto {
   margin-left: auto;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-group {
+  margin-bottom: 1rem;
 }

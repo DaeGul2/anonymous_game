@@ -69,8 +69,8 @@ function Navigation() {
         <div className="collapse navbar-collapse" id="navbarNav">
           {loggedIn ? (
             <div className="ml-auto d-flex align-items-center">
-              <span className="navbar-text mr-3">{userId}님 반갑습니다.</span>
-              <button className="btn btn-secondary" onClick={handleLogout}>로그아웃</button>
+              <span className="navbar-text mr-3">Welcome! {userId}</span>
+              <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
             </div>
           ) : (
             <form className="ml-auto form-inline d-flex align-items-center" onSubmit={handleLogin}>

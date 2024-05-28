@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
-// navigate를 초기화합니다.
-
+import { Card, Form, Button, InputGroup, Col, Row } from 'react-bootstrap';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const axiosInstance = axios.create({
@@ -58,42 +56,55 @@ function CreateRoom() {
   };
 
   return (
-    <div>
-      <h2>Create Room</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Room Name</label>
-          <input type="text" className="form-control" name="roomName" onChange={handleChange} required />
-        </div>
-        <div className="form-group">
-          <label>Password</label>
-          <input type="password" className="form-control" name="password" onChange={handleChange} required />
-        </div>
-        <div className="form-group">
-          <label>Max Participants</label>
-          <input type="number" className="form-control" name="maxParticipants" onChange={handleChange} required />
-        </div>
-        
-
-        <div className="form-group">
-          <label>Hint Settings</label>
-          <div className="mb-2 form-inline">
-            <input type="text" className="mr-2 form-control" placeholder="Info Type" name="infoType" value={hintSetting.infoType} onChange={handleHintSettingChange} />
-            <input type="text" className="mr-2 form-control" placeholder="Punishment" name="punishment" value={hintSetting.punishment} onChange={handleHintSettingChange} />
-            <button type="button" className="btn btn-secondary" onClick={handleAddHintSetting}>Add</button>
-          </div>
-          <ul className="list-group">
-            {formData.hintSettings.map((setting, index) => (
-              <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
-                {setting.infoType} || {setting.punishment}
-                <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteHintSetting(index)}>Delete</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <button type="submit" className="btn btn-primary">Create Room</button>
-      </form>
+    <div className="container mt-5">
+      <Card className="mx-auto" style={{ maxWidth: '600px' }}>
+        <Card.Body>
+          <Card.Title className="text-center mb-4">Create Room</Card.Title>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group controlId="formRoomName" className="form-group">
+              <Form.Label>Room Name</Form.Label>
+              <Form.Control type="text" name="roomName" onChange={handleChange} required />
+            </Form.Group>
+            <Form.Group controlId="formPassword" className="form-group">
+              <Form.Label>Password</Form.Label>
+              <Form.Control type="password" name="password" onChange={handleChange} required />
+            </Form.Group>
+            <Form.Group controlId="formMaxParticipants" className="form-group">
+              <Form.Label>Max Participants</Form.Label>
+              <Form.Control type="number" name="maxParticipants" onChange={handleChange} required />
+            </Form.Group>
+            <Form.Group controlId="formHintSettings" className="form-group">
+              <Form.Label>Hint Settings</Form.Label>
+              <InputGroup className="mb-3">
+                <Form.Control
+                  placeholder="Info Type"
+                  name="infoType"
+                  value={hintSetting.infoType}
+                  onChange={handleHintSettingChange}
+                />
+                <Form.Control
+                  placeholder="Punishment"
+                  name="punishment"
+                  value={hintSetting.punishment}
+                  onChange={handleHintSettingChange}
+                />
+                <Button variant="secondary" onClick={handleAddHintSetting}>Add</Button>
+              </InputGroup>
+              <ul className="list-group">
+                {formData.hintSettings.map((setting, index) => (
+                  <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                    {setting.infoType} || {setting.punishment}
+                    <Button variant="danger" size="sm" onClick={() => handleDeleteHintSetting(index)}>Delete</Button>
+                  </li>
+                ))}
+              </ul>
+            </Form.Group>
+            <div className="text-center">
+              <Button variant="primary" type="submit">Create Room</Button>
+            </div>
+          </Form>
+        </Card.Body>
+      </Card>
     </div>
   );
 }
