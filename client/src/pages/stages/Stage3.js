@@ -84,39 +84,38 @@ function Stage3({ roomId, isOwner, questionId, hintSettings }) {
 
   return (
     <div className="container mt-5">
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title className="text-center mb-4" style={{ fontSize: '2em', fontWeight: 'bold' }}>
-            {question?.content}
-          </Card.Title>
-          <div className="answer-summary">
-            <div>Yes: {yesCount}</div>
-            <div>No: {noCount}</div>
+      <div className="mb-4">
+        <div className="text-center mb-4" style={{ fontSize: '2em', fontWeight: 'bold' }}>
+          {question?.content}
+        </div>
+        <div className="answer-summary">
+          <div>Yes: {yesCount}</div>
+          <div>No: {noCount}</div>
+        </div>
+
+        {answers.length > 0 && (
+          <div className="mt-4" style={{ width: '100%' }}>
+            {answers.map((answer, index) => (
+              <div key={index} className="info-punishment" style={{ width: '100%' }}>
+                <div>{answer.response === 1 ? 'Yes' : 'No'}</div>
+                <div>{answer.explanation}</div>
+              </div>
+            ))}
           </div>
-          
-          {answers.length > 0 && (
-            <div className="mt-4">
-              {answers.map((answer, index) => (
-                <div key={index} className="info-punishment">
-                  <div>{answer.response === 1 ? 'Yes' : 'No'}</div>
-                  <div>{answer.explanation}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {hintSettings?.length > 0 && (
-            <div className="mt-4">
-              {hintSettings.map((setting, index) => (
-                <div key={index} className="info-punishment">
-                  <div>{setting.infoType}</div>
-                  <div>{setting.punishment}</div>
-                  {isOwner&&<Button variant="success" onClick={() => handleShowUserInfos(setting.infoType)}>Open</Button>}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+        )}
+
+        {hintSettings?.length > 0 && (
+          <div className="mt-4">
+            {hintSettings.map((setting, index) => (
+              <div key={index} className="info-punishment">
+                <div>{setting.infoType}</div>
+                <div>{setting.punishment}</div>
+                {isOwner && <Button variant="success" onClick={() => handleShowUserInfos(setting.infoType)}>Open</Button>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)} ariaHideApp={false}>
         <h1>Question : {question?.content}</h1>
