@@ -96,7 +96,7 @@ function Stage2({ roomId, isOwner, onStageChange, setSelectedQuestionId }) {
   return (
     <div>
       <h2>질문 선택단계</h2>
-      <table>
+      <table className='table'>
         <thead>
           <tr>
             <th></th>

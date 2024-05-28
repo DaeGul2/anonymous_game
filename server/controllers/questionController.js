@@ -68,8 +68,41 @@ const finishQuestion = async (req, res) => {
   }
 };
 
+
+const getUserInfosForQuestion = async (req, res) => {
+  try {
+    const { roomId, questionId, infoType } = req.params;
+
+    // 해당 방의 정보 가져오기
+    const room = await Room.findById(roomId).populate('userInfo.user');
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    // 해당 질문의 정보 가져오기
+    const question = await Question.findById(questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    // 해당 질문에 답변한 userId 목록 가져오기
+    const userIds = question.answers.map(answer => answer.userId);
+
+    // 각 userId에 대해 해당 방의 userInfo에서 특정 infoType 값을 가져오기
+    const userInfos = userIds.map(userId => {
+      const userInfo = room.userInfo.find(info => info.user.equals(userId));
+      return { userId, infoValue: userInfo ? userInfo.info.get(infoType) : null };
+    });
+
+    res.status(200).json(userInfos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   createQuestion,
   getQuestions,
-  finishQuestion
+  finishQuestion,
+  getUserInfosForQuestion 
 };
