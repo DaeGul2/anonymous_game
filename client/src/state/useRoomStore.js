@@ -10,15 +10,28 @@ export const useRoomStore = create((set, get) => ({
   guest_token: "",
 
   rooms: [],
-  state: null, // { room, players }
+  state: null,
+
   game: {
     phase: null,
     deadline_at: null,
     round_no: 0,
+
     current_question: null, // {id,text}
-    reveal: null, // {question, answers[]}
-    round_end: null, // info
-    question_submitted: false, // ✅ 1페이즈 질문 제출 여부
+    reveal: null, // {question, answers, is_last}
+    round_end: null,
+
+    // ====== 질문(phase1) 내 제출 상태 ======
+    question_submitted: false,
+    question_saved_text: "",
+    question_saved_at: null,
+    question_pending_text: "",
+
+    // ====== 답변(ask) 내 제출 상태: question_id 기준 ======
+    answer_submitted_by_qid: {}, // { [qid]: boolean }
+    answer_saved_text_by_qid: {}, // { [qid]: string }
+    answer_saved_at_by_qid: {}, // { [qid]: isoString }
+    answer_pending_text_by_qid: {}, // { [qid]: string }
   },
 
   error: "",
@@ -28,7 +41,6 @@ export const useRoomStore = create((set, get) => ({
     const guest_id = getOrCreateGuestId();
     const guest_token = getGuestToken();
 
-    // listeners 1번만
     if (get().socketReady) return;
 
     s.on("connect", () => {
@@ -36,10 +48,8 @@ export const useRoomStore = create((set, get) => ({
     });
 
     s.on(EVENTS.GUEST_ENSURE_RES, (res) => {
-      if (!res?.ok) {
-        set({ error: res?.message || "guest ensure 실패" });
-        return;
-      }
+      if (!res?.ok) return set({ error: res?.message || "guest ensure 실패" });
+
       setGuestToken(res.guest_token);
       set({
         socketReady: true,
@@ -49,7 +59,7 @@ export const useRoomStore = create((set, get) => ({
       });
     });
 
-    // room
+    // room list
     s.on(EVENTS.ROOM_LIST_RES, (res) => {
       if (!res?.ok) return set({ error: res?.message || "room list 실패" });
       set({ rooms: res.rooms || [], error: "" });
@@ -65,20 +75,59 @@ export const useRoomStore = create((set, get) => ({
     s.on(EVENTS.ROOM_REJOIN_RES, applyState);
     s.on(EVENTS.ROOM_UPDATE, applyState);
 
-    s.on(EVENTS.ROOM_DESTROYED, () => {
-      set({ state: null });
-    });
+    s.on(EVENTS.ROOM_DESTROYED, () => set({ state: null }));
 
-    // ✅ 질문 제출 응답: 제출 완료 플래그 세팅
+    // ====== 질문 제출 응답 ======
     s.on(EVENTS.GAME_SUBMIT_Q_RES, (res) => {
-      if (!res?.ok) return set({ error: res?.message || "질문 제출 실패" });
-      set((st) => ({
-        game: { ...st.game, question_submitted: true },
-        error: "",
-      }));
+      if (!res?.ok) return set({ error: res?.message || "질문 저장 실패" });
+
+      set((st) => {
+        const pending = st.game.question_pending_text || "";
+        return {
+          game: {
+            ...st.game,
+            question_submitted: true,
+            question_saved_text: pending || st.game.question_saved_text,
+            question_saved_at: new Date().toISOString(),
+            question_pending_text: "",
+          },
+          error: "",
+        };
+      });
     });
 
-    // game events (서버가 방송)
+    // ====== 답변 제출 응답 ======
+    s.on(EVENTS.GAME_SUBMIT_A_RES, (res) => {
+      if (!res?.ok) return set({ error: res?.message || "답변 저장 실패" });
+
+      set((st) => {
+        const qid = st.game.current_question?.id;
+        if (!qid) return st;
+
+        const pending = st.game.answer_pending_text_by_qid[qid] || "";
+        return {
+          game: {
+            ...st.game,
+            answer_submitted_by_qid: { ...st.game.answer_submitted_by_qid, [qid]: true },
+            answer_saved_text_by_qid: {
+              ...st.game.answer_saved_text_by_qid,
+              [qid]: pending || st.game.answer_saved_text_by_qid[qid] || "",
+            },
+            answer_saved_at_by_qid: {
+              ...st.game.answer_saved_at_by_qid,
+              [qid]: new Date().toISOString(),
+            },
+            answer_pending_text_by_qid: {
+              ...st.game.answer_pending_text_by_qid,
+              [qid]: "",
+            },
+          },
+          error: "",
+        };
+      });
+    });
+
+    // ====== phase broadcast ======
     s.on(EVENTS.GAME_PHASE, (p) => {
       if (!p?.ok) return;
       set((st) => ({
@@ -87,27 +136,37 @@ export const useRoomStore = create((set, get) => ({
           phase: p.phase,
           deadline_at: p.deadline_at || null,
           round_no: p.round_no || st.game.round_no,
-          // ✅ 질문 입력 페이즈 시작 시 제출여부 초기화
-          question_submitted: p.phase === "question_submit" ? false : st.game.question_submitted,
+
+          // question_submit 들어가면, 제출 플래그는 유지하되 "pending"만 비움
+          question_pending_text: p.phase === "question_submit" ? "" : st.game.question_pending_text,
         },
       }));
     });
 
     s.on(EVENTS.GAME_ASK, (p) => {
       if (!p?.ok) return;
-      set((st) => ({
-        game: {
-          ...st.game,
-          phase: "ask",
-          deadline_at: p.deadline_at || null,
-          round_no: p.round_no || st.game.round_no,
-          current_question: p.question || null,
-          reveal: null,
-          round_end: null,
-          // ✅ 질문 페이즈 끝났으니 정리
-          question_submitted: false,
-        },
-      }));
+      set((st) => {
+        const q = p.question || null;
+        const qid = q?.id;
+
+        return {
+          game: {
+            ...st.game,
+            phase: "ask",
+            deadline_at: p.deadline_at || null,
+            round_no: p.round_no || st.game.round_no,
+            current_question: q,
+            reveal: null,
+            round_end: null,
+            // 질문 페이즈 관련 pending 정리
+            question_pending_text: "",
+            // 답변 pending은 현재 qid만 비움 (연타/중복 방지)
+            answer_pending_text_by_qid: qid
+              ? { ...st.game.answer_pending_text_by_qid, [qid]: "" }
+              : st.game.answer_pending_text_by_qid,
+          },
+        };
+      });
     });
 
     s.on(EVENTS.GAME_REVEAL, (p) => {
@@ -118,7 +177,12 @@ export const useRoomStore = create((set, get) => ({
           phase: "reveal",
           deadline_at: null,
           round_no: p.round_no || st.game.round_no,
-          reveal: { question: p.question, answers: p.answers || [] },
+          current_question: null,
+          reveal: {
+            question: p.question,
+            answers: p.answers || [],
+            is_last: !!p.is_last,
+          },
         },
       }));
     });
@@ -134,7 +198,6 @@ export const useRoomStore = create((set, get) => ({
           round_end: p,
           current_question: null,
           reveal: null,
-          question_submitted: false,
         },
       }));
     });
@@ -148,73 +211,75 @@ export const useRoomStore = create((set, get) => ({
           current_question: null,
           reveal: null,
           round_end: null,
-          question_submitted: false,
         },
       }));
     });
 
-    s.on("disconnect", () => {
-      set({ socketReady: false });
+    s.on(EVENTS.GAME_HOST_REVEAL_NEXT_RES, (res) => {
+      if (!res?.ok) set({ error: res?.message || "다음 진행 실패" });
     });
 
-    // 초기 상태 저장
+    s.on("disconnect", () => set({ socketReady: false }));
+
     set({ guest_id, guest_token });
   },
 
-  // actions
-  roomList: () => {
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_LIST);
-  },
+  // ===== actions =====
+  roomList: () => connectSocket().emit(EVENTS.ROOM_LIST),
 
   roomCreate: ({ title, max_players, nickname }) => {
     const { guest_id, guest_token } = get();
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_CREATE, { guest_id, guest_token, title, max_players, nickname });
+    connectSocket().emit(EVENTS.ROOM_CREATE, { guest_id, guest_token, title, max_players, nickname });
   },
 
   roomJoin: ({ code, nickname }) => {
     const { guest_id, guest_token } = get();
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_JOIN, { guest_id, guest_token, code, nickname });
+    connectSocket().emit(EVENTS.ROOM_JOIN, { guest_id, guest_token, code, nickname });
   },
 
   roomRejoin: ({ code }) => {
     const { guest_id, guest_token } = get();
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_REJOIN, { guest_id, guest_token, code });
+    connectSocket().emit(EVENTS.ROOM_REJOIN, { guest_id, guest_token, code });
   },
 
-  roomReady: (is_ready) => {
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_READY, { is_ready });
-  },
+  roomReady: (is_ready) => connectSocket().emit(EVENTS.ROOM_READY, { is_ready }),
 
   roomLeave: () => {
-    const s = connectSocket();
-    s.emit(EVENTS.ROOM_LEAVE);
+    connectSocket().emit(EVENTS.ROOM_LEAVE);
     set({ state: null });
   },
 
   gameSubmitQuestion: (text) => {
-    const s = connectSocket();
-    // ✅ 제출 전에는 제출완료 false로 한번 초기화(연타 방지 UX)
-    set((st) => ({ game: { ...st.game, question_submitted: false } }));
-    s.emit(EVENTS.GAME_SUBMIT_Q, { text });
+    const t = String(text || "").trim();
+    set((st) => ({
+      game: {
+        ...st.game,
+        question_pending_text: t,
+      },
+    }));
+    connectSocket().emit(EVENTS.GAME_SUBMIT_Q, { text: t });
   },
 
   gameSubmitAnswer: (text) => {
-    const s = connectSocket();
-    s.emit(EVENTS.GAME_SUBMIT_A, { text });
+    const qid = get().game.current_question?.id;
+    const t = String(text || "").trim();
+
+    if (qid) {
+      set((st) => ({
+        game: {
+          ...st.game,
+          answer_pending_text_by_qid: {
+            ...st.game.answer_pending_text_by_qid,
+            [qid]: t,
+          },
+        },
+      }));
+    }
+
+    connectSocket().emit(EVENTS.GAME_SUBMIT_A, { text: t });
   },
 
-  hostNextRound: () => {
-    const s = connectSocket();
-    s.emit(EVENTS.GAME_HOST_NEXT);
-  },
-
-  hostEndGame: () => {
-    const s = connectSocket();
-    s.emit(EVENTS.GAME_HOST_END);
-  },
+  hostRevealNext: () => connectSocket().emit(EVENTS.GAME_HOST_REVEAL_NEXT),
+  hostNextRound: () => connectSocket().emit(EVENTS.GAME_HOST_NEXT),
+  hostEndGame: () => connectSocket().emit(EVENTS.GAME_HOST_END),
 }));

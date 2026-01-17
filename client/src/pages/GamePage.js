@@ -1,12 +1,17 @@
 // src/pages/GamePage.js
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Container, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import TimerBar from "../components/TimerBar";
+import AnonymousReveal from "../components/AnonymousReveal";
 import QuestionInput from "../components/QuestionInput";
 import AnswerInput from "../components/AnswerInput";
-import AnonymousReveal from "../components/AnonymousReveal";
 import { useRoomStore } from "../state/useRoomStore";
+
+function isExpired(deadlineIso) {
+  if (!deadlineIso) return false;
+  return Date.now() > new Date(deadlineIso).getTime();
+}
 
 export default function GamePage() {
   const { code } = useParams();
@@ -21,6 +26,7 @@ export default function GamePage() {
     guest_id,
     gameSubmitQuestion,
     gameSubmitAnswer,
+    hostRevealNext,
     hostNextRound,
     hostEndGame,
     error,
@@ -49,12 +55,47 @@ export default function GamePage() {
   const isHost = state?.room?.host_player_id && myPlayer?.id === state.room.host_player_id;
 
   const phase = state?.room?.phase || game.phase;
+  const deadlineAt = state?.room?.phase_deadline_at || game.deadline_at;
 
   const totalSeconds = useMemo(() => {
     if (phase === "question_submit") return 120;
     if (phase === "ask") return 60;
     return 0;
   }, [phase]);
+
+  // ===== 마감 감지용 신호(마감 순간 1회 증가) =====
+  const [deadlineExpiredSignal, setDeadlineExpiredSignal] = useState(0);
+  const wasExpiredRef = useRef(false);
+
+  useEffect(() => {
+    if (!deadlineAt) {
+      wasExpiredRef.current = false;
+      return;
+    }
+
+    const tick = () => {
+      const exp = isExpired(deadlineAt);
+      if (exp && !wasExpiredRef.current) {
+        wasExpiredRef.current = true;
+        setDeadlineExpiredSignal((x) => x + 1);
+      }
+      if (!exp) wasExpiredRef.current = false;
+    };
+
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [deadlineAt]);
+
+  const canEditNow = useMemo(() => {
+    if (phase !== "question_submit" && phase !== "ask") return false;
+    return !isExpired(deadlineAt);
+  }, [phase, deadlineAt]);
+
+  // 내 답변 상태(현재 질문 기준)
+  const currentQid = game.current_question?.id || "";
+  const myAnswerSubmitted = !!(currentQid && game.answer_submitted_by_qid[currentQid]);
+  const myAnswerSavedText = (currentQid && game.answer_saved_text_by_qid[currentQid]) || "";
 
   return (
     <Container sx={{ py: 3 }}>
@@ -79,50 +120,74 @@ export default function GamePage() {
         </Typography>
 
         {(phase === "question_submit" || phase === "ask") && (
-          <TimerBar
-            deadlineAt={state?.room?.phase_deadline_at || game.deadline_at}
-            totalSeconds={totalSeconds}
-          />
+          <TimerBar deadlineAt={deadlineAt} totalSeconds={totalSeconds} />
         )}
       </Paper>
 
+      {/* ===== phase 1: 질문 입력 ===== */}
       {phase === "question_submit" && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700}>질문 입력 (익명)</Typography>
-          <Typography variant="body2" color="text.secondary">
-            시간 내에 질문 못 쓰면 질문은 제외되지만 게임 참여는 유지.
-          </Typography>
+        <>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700}>질문 입력 (익명)</Typography>
+            <Typography variant="body2" color="text.secondary">
+              마감 전까지는 수정 가능. 저장 버튼 누른 것만 서버에 반영됨.
+            </Typography>
+          </Paper>
 
-          {game.question_submitted ? (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" fontWeight={800}>제출 완료</Typography>
-              <Typography variant="body2" color="text.secondary">
-                다른 사람들 기다리는 중. 서버가 다음 단계로 넘어가면 자동 진행됨.
-              </Typography>
-            </Box>
-          ) : (
-            <QuestionInput
-              disabled={false}
-              onSubmit={(t) => gameSubmitQuestion(t)}
-            />
-          )}
-        </Paper>
+          <QuestionInput
+            canEdit={canEditNow}
+            savedText={game.question_saved_text}
+            submitted={game.question_submitted}
+            onSave={(t) => gameSubmitQuestion(t)}
+            deadlineExpiredSignal={deadlineExpiredSignal}
+          />
+        </>
       )}
 
+      {/* ===== ask: 답변 ===== */}
       {phase === "ask" && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary">질문</Typography>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            {game.current_question?.text || "(질문 로딩 중)"}
-          </Typography>
-          <AnswerInput onSubmit={(t) => gameSubmitAnswer(t)} />
-        </Paper>
+        <>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary">질문</Typography>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              {game.current_question?.text || "(질문 로딩 중)"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              마감 전까지 수정 가능. 수정 중 마감되면 마지막 저장본이 사용됨.
+            </Typography>
+          </Paper>
+
+          <AnswerInput
+            canEdit={canEditNow}
+            savedText={myAnswerSavedText}
+            submitted={myAnswerSubmitted}
+            onSave={(t) => gameSubmitAnswer(t)}
+            deadlineExpiredSignal={deadlineExpiredSignal}
+          />
+        </>
       )}
 
+      {/* ===== reveal ===== */}
       {phase === "reveal" && (
-        <AnonymousReveal question={game.reveal?.question} answers={game.reveal?.answers} />
+        <>
+          <AnonymousReveal question={game.reveal?.question} answers={game.reveal?.answers} />
+          <Paper sx={{ p: 2, mt: 2 }}>
+            {isHost ? (
+              <Stack direction="row" spacing={1}>
+                <Button variant="contained" onClick={hostRevealNext}>
+                  {game.reveal?.is_last ? "라운드 종료" : "다음 질문"}
+                </Button>
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                방장이 다음 진행을 누를 때까지 대기.
+              </Typography>
+            )}
+          </Paper>
+        </>
       )}
 
+      {/* ===== round_end ===== */}
       {phase === "round_end" && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight={800}>라운드 종료</Typography>

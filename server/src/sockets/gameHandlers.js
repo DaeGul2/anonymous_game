@@ -1,4 +1,4 @@
-// src/sockets/gameHandlers.js
+// server/src/sockets/gameHandlers.js
 const { getSocketSession } = require("../store/memoryStore");
 const game = require("../services/gameService");
 
@@ -10,7 +10,6 @@ function fail(socket, event, message) {
 }
 
 module.exports = (io, socket) => {
-  // 질문 제출
   socket.on("game:submitQuestion", async ({ text } = {}) => {
     try {
       const sess = getSocketSession(socket.id);
@@ -23,7 +22,6 @@ module.exports = (io, socket) => {
     }
   });
 
-  // 답변 제출(현재 질문에 대한 답변)
   socket.on("game:submitAnswer", async ({ text } = {}) => {
     try {
       const sess = getSocketSession(socket.id);
@@ -36,7 +34,19 @@ module.exports = (io, socket) => {
     }
   });
 
-  // 방장: 다음 라운드
+  // ✅ reveal에서 방장이 눌러서 다음 단계로
+  socket.on("game:hostRevealNext", async () => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) return fail(socket, "game:hostRevealNext:res", "세션 없음");
+
+      await game.hostRevealNext(io, sess.roomCode, sess.playerId);
+      ok(socket, "game:hostRevealNext:res", {});
+    } catch (e) {
+      fail(socket, "game:hostRevealNext:res", e?.message || "hostRevealNext failed");
+    }
+  });
+
   socket.on("game:hostNextRound", async () => {
     try {
       const sess = getSocketSession(socket.id);
@@ -49,7 +59,6 @@ module.exports = (io, socket) => {
     }
   });
 
-  // 방장: 게임 종료(로비 복귀 + ready reset)
   socket.on("game:hostEndGame", async () => {
     try {
       const sess = getSocketSession(socket.id);
