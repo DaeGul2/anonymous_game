@@ -21,6 +21,34 @@ function isExpired(deadlineIso) {
   return Date.now() > new Date(deadlineIso).getTime();
 }
 
+/** ===== localStorage helpers ===== */
+function lsGet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function lsSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+function lsDel(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
+function keyQuestion({ code, roundNo }) {
+  return `ag:${code}:r${roundNo}:question`;
+}
+function keyAnswer({ code, roundNo, qid, guestId }) {
+  return `ag:${code}:r${roundNo}:q${qid}:a:${guestId}`;
+}
+
 export default function GamePage() {
   const { code } = useParams();
   const nav = useNavigate();
@@ -72,7 +100,6 @@ export default function GamePage() {
     return 0;
   }, [phase]);
 
-  // ===== 마감 감지용 신호(마감 순간 1회 증가) =====
   const [deadlineExpiredSignal, setDeadlineExpiredSignal] = useState(0);
   const wasExpiredRef = useRef(false);
 
@@ -101,15 +128,76 @@ export default function GamePage() {
     return !isExpired(deadlineAt);
   }, [phase, deadlineAt]);
 
-  // 내 답변 상태(현재 질문 기준)
+  const roundNo = state?.room?.current_round_no || game.round_no || 0;
+
+  /** ====== 질문/답변 local persistence ====== */
+
+  // 질문: 서버 저장본이 있으면 그걸 사용, 없으면 로컬 저장본 표시
+  const qKey = useMemo(() => keyQuestion({ code: code?.toUpperCase(), roundNo }), [code, roundNo]);
+  const qLocal = useMemo(() => lsGet(qKey), [qKey]);
+
+  const questionSavedTextDisplay = useMemo(() => {
+    const serverText = game.question_saved_text || "";
+    if (serverText.trim()) return serverText;
+    return (qLocal?.text || "").trim();
+  }, [game.question_saved_text, qLocal]);
+
+  const questionSubmittedDisplay = useMemo(() => {
+    // 서버 제출이 true면 확정, 아니면 로컬에 뭐라도 있으면 "저장된 걸로" 표시
+    if (game.question_submitted) return true;
+    return !!(qLocal?.text && String(qLocal.text).trim());
+  }, [game.question_submitted, qLocal]);
+
+  // 서버 제출이 확인되면 해당 로컬 백업 삭제(중복/혼동 방지)
+  useEffect(() => {
+    if (game.question_submitted && qLocal?.text) {
+      lsDel(qKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.question_submitted]);
+
+  // 답변: 현재 질문(qid) 기준으로 로컬 저장/복원
   const currentQid = game.current_question?.id || "";
+  const aKey = useMemo(
+    () => (currentQid ? keyAnswer({ code: code?.toUpperCase(), roundNo, qid: currentQid, guestId: guest_id }) : ""),
+    [code, roundNo, currentQid, guest_id]
+  );
+  const aLocal = useMemo(() => (aKey ? lsGet(aKey) : null), [aKey]);
+
   const myAnswerSubmitted = !!(
     currentQid && game.answer_submitted_by_qid[currentQid]
   );
   const myAnswerSavedText =
     (currentQid && game.answer_saved_text_by_qid[currentQid]) || "";
 
-  const roundNo = state?.room?.current_round_no || game.round_no || 0;
+  const answerSavedTextDisplay = useMemo(() => {
+    if (String(myAnswerSavedText || "").trim()) return myAnswerSavedText;
+    return (aLocal?.text || "").trim();
+  }, [myAnswerSavedText, aLocal]);
+
+  const answerSubmittedDisplay = useMemo(() => {
+    if (myAnswerSubmitted) return true;
+    return !!(aLocal?.text && String(aLocal.text).trim());
+  }, [myAnswerSubmitted, aLocal]);
+
+  // 서버 제출 확인되면 로컬 백업 삭제
+  useEffect(() => {
+    if (myAnswerSubmitted && aKey) lsDel(aKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myAnswerSubmitted, aKey]);
+
+  // 저장 버튼 누를 때: 서버 전송 + 로컬에도 백업 저장
+  const handleSaveQuestion = (text) => {
+    if (!code) return;
+    lsSet(qKey, { text: String(text ?? ""), ts: Date.now() });
+    gameSubmitQuestion(text);
+  };
+
+  const handleSaveAnswer = (text) => {
+    if (!code || !currentQid) return;
+    lsSet(aKey, { text: String(text ?? ""), ts: Date.now() });
+    gameSubmitAnswer(text);
+  };
 
   return (
     <Box className="appShell">
@@ -193,15 +281,15 @@ export default function GamePage() {
               질문 입력 (익명)
             </Typography>
             <Typography className="subtle" sx={{ fontSize: 12, mt: 0.5 }}>
-              마감 전까지 수정 가능. 저장 버튼 누른 것만 서버에 반영됨.
+              저장 누르면 로컬에도 백업됨. 새로고침해도 이어서 가능.
             </Typography>
           </Paper>
 
           <QuestionInput
             canEdit={canEditNow}
-            savedText={game.question_saved_text}
-            submitted={game.question_submitted}
-            onSave={(t) => gameSubmitQuestion(t)}
+            savedText={questionSavedTextDisplay}
+            submitted={questionSubmittedDisplay}
+            onSave={handleSaveQuestion}
             deadlineExpiredSignal={deadlineExpiredSignal}
           />
         </>
@@ -215,7 +303,6 @@ export default function GamePage() {
               익명 질문
             </Typography>
 
-            {/* Question bubble */}
             <Box
               sx={{
                 mt: 1,
@@ -232,15 +319,15 @@ export default function GamePage() {
             </Box>
 
             <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              마감 전까지 수정 가능. 마감되면 마지막 저장본이 사용됨.
+              저장 누르면 로컬에도 백업됨. 새로고침해도 이어서 가능.
             </Typography>
           </Paper>
 
           <AnswerInput
             canEdit={canEditNow}
-            savedText={myAnswerSavedText}
-            submitted={myAnswerSubmitted}
-            onSave={(t) => gameSubmitAnswer(t)}
+            savedText={answerSavedTextDisplay}
+            submitted={answerSubmittedDisplay}
+            onSave={handleSaveAnswer}
             deadlineExpiredSignal={deadlineExpiredSignal}
           />
         </>
@@ -312,10 +399,9 @@ export default function GamePage() {
         </Paper>
       )}
 
-      {/* fallback */}
       {!phase && (
         <Paper className="glassCard section" sx={{ p: 2 }}>
-          <Typography className="subtle">phase 없음. 서버가 뭔가 삐끗함.</Typography>
+          <Typography className="subtle">phase 없음. 서버가 삐끗함.</Typography>
         </Paper>
       )}
     </Box>

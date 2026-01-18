@@ -141,6 +141,17 @@ async function submitQuestion(io, { roomCode, playerId, text }) {
   room.last_activity_at = new Date();
   await room.save();
 
+  // ✅ 질문도: 전원 제출하면 타임아웃 기다리지 말고 즉시 다음 단계로
+  const players = await Player.findAll({ where: { room_id: room.id } });
+  const submittedCount = await Question.count({ where: { round_id: roundId } });
+
+  if (submittedCount >= players.length) {
+    // 타이머 중복 호출 방지
+    clearTimers(room.code, ["question_submit_end"]);
+    await endQuestionSubmit(io, room.code);
+    return;
+  }
+
   io.to(room.code).emit("game:questionSubmitted", { ok: true });
 }
 
@@ -284,7 +295,6 @@ async function endAnswer(io, roomCode) {
   const game = rt?.game || {};
   const isLast = (Number(game.questionIndex || 0) + 1) >= (game.questionIds?.length || 0);
 
-  // ✅ reveal로 전환 (자동 다음으로 안 넘어감)
   await sequelize.transaction(async (t) => {
     room.phase = "reveal";
     room.phase_deadline_at = null;
@@ -297,18 +307,16 @@ async function endAnswer(io, roomCode) {
   io.to(room.code).emit("game:reveal", {
     ok: true,
     round_no: room.current_round_no,
-    is_last: isLast, // ✅ 클라에서 버튼 문구/노출 제어
+    is_last: isLast,
     question: { id: question.id, text: question.text },
     answers: shuffle(
       answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
     ),
   });
 
-  // ✅ 여기서 타이머로 nextQuestionOrEnd 호출 안 함
   clearTimers(room.code, ["reveal_end"]);
 }
 
-// ✅ reveal에서 방장이 눌러야 다음 진행
 async function hostRevealNext(io, roomCode, hostPlayerId) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) throw new Error("방을 찾을 수 없음");
@@ -431,7 +439,7 @@ module.exports = {
   endQuestionSubmit,
   submitAnswer,
   endAnswer,
-  hostRevealNext,   // ✅ 추가
+  hostRevealNext,
   hostNextRound,
   hostEndGame,
 };
