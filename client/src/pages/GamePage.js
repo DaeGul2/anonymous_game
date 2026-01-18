@@ -49,6 +49,15 @@ function keyAnswer({ code, roundNo, qid, guestId }) {
   return `ag:${code}:r${roundNo}:q${qid}:a:${guestId}`;
 }
 
+function phaseLabel(p) {
+  if (p === "question_submit") return "질문 작성";
+  if (p === "ask") return "답변 작성";
+  if (p === "reveal") return "공개";
+  if (p === "round_end") return "라운드 종료";
+  if (p === "lobby") return "로비";
+  return p || "-";
+}
+
 export default function GamePage() {
   const { code } = useParams();
   const nav = useNavigate();
@@ -133,7 +142,10 @@ export default function GamePage() {
   /** ====== 질문/답변 local persistence ====== */
 
   // 질문: 서버 저장본이 있으면 그걸 사용, 없으면 로컬 저장본 표시
-  const qKey = useMemo(() => keyQuestion({ code: code?.toUpperCase(), roundNo }), [code, roundNo]);
+  const qKey = useMemo(
+    () => keyQuestion({ code: code?.toUpperCase(), roundNo }),
+    [code, roundNo]
+  );
   const qLocal = useMemo(() => lsGet(qKey), [qKey]);
 
   const questionSavedTextDisplay = useMemo(() => {
@@ -143,7 +155,6 @@ export default function GamePage() {
   }, [game.question_saved_text, qLocal]);
 
   const questionSubmittedDisplay = useMemo(() => {
-    // 서버 제출이 true면 확정, 아니면 로컬에 뭐라도 있으면 "저장된 걸로" 표시
     if (game.question_submitted) return true;
     return !!(qLocal?.text && String(qLocal.text).trim());
   }, [game.question_submitted, qLocal]);
@@ -159,7 +170,15 @@ export default function GamePage() {
   // 답변: 현재 질문(qid) 기준으로 로컬 저장/복원
   const currentQid = game.current_question?.id || "";
   const aKey = useMemo(
-    () => (currentQid ? keyAnswer({ code: code?.toUpperCase(), roundNo, qid: currentQid, guestId: guest_id }) : ""),
+    () =>
+      currentQid
+        ? keyAnswer({
+            code: code?.toUpperCase(),
+            roundNo,
+            qid: currentQid,
+            guestId: guest_id,
+          })
+        : "",
     [code, roundNo, currentQid, guest_id]
   );
   const aLocal = useMemo(() => (aKey ? lsGet(aKey) : null), [aKey]);
@@ -205,20 +224,20 @@ export default function GamePage() {
       <Box className="pageHeader">
         <Box style={{ minWidth: 0 }}>
           <Typography className="pageTitle">
-            게임{" "}
+            게임 진행{" "}
             <Typography component="span" className="subtle" sx={{ fontSize: 14 }}>
               {code ? `(${code.toUpperCase()})` : ""}
             </Typography>
           </Typography>
           <Typography className="subtle" sx={{ mt: 0.25 }}>
-            라운드 {roundNo} · phase: {phase || "-"}
+            라운드 {roundNo} · 진행 단계: {phaseLabel(phase)}
           </Typography>
         </Box>
 
         <Stack direction="row" spacing={1} alignItems="center">
           <Chip
             size="small"
-            label={isHost ? "HOST" : "GUEST"}
+            label={isHost ? "방장" : "참여자"}
             sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }}
           />
           <IconButton
@@ -251,12 +270,12 @@ export default function GamePage() {
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
           <Chip
             size="small"
-            label={`Round ${roundNo}`}
+            label={`라운드 ${roundNo}`}
             sx={{ fontWeight: 900, borderRadius: 999 }}
           />
           <Chip
             size="small"
-            label={phase || "UNKNOWN"}
+            label={phaseLabel(phase)}
             sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }}
           />
           {state?.players?.length != null && state?.room?.max_players != null && (
@@ -278,10 +297,10 @@ export default function GamePage() {
         <>
           <Paper className="glassCard section" sx={{ p: 2 }}>
             <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-              질문 입력 (익명)
+              질문 작성
             </Typography>
             <Typography className="subtle" sx={{ fontSize: 12, mt: 0.5 }}>
-              저장 누르면 로컬에도 백업됨. 새로고침해도 이어서 가능.
+              저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
             </Typography>
           </Paper>
 
@@ -300,7 +319,7 @@ export default function GamePage() {
         <>
           <Paper className="glassCard section" sx={{ p: 2 }}>
             <Typography className="subtle" sx={{ fontSize: 12 }}>
-              익명 질문
+              현재 질문
             </Typography>
 
             <Box
@@ -314,12 +333,12 @@ export default function GamePage() {
               }}
             >
               <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-                {game.current_question?.text || "(질문 로딩 중)"}
+                {game.current_question?.text || "질문을 불러오는 중입니다."}
               </Typography>
             </Box>
 
             <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              저장 누르면 로컬에도 백업됨. 새로고침해도 이어서 가능.
+              저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
             </Typography>
           </Paper>
 
@@ -354,7 +373,7 @@ export default function GamePage() {
               </Stack>
             ) : (
               <Typography className="subtle" sx={{ fontSize: 12 }}>
-                방장이 다음 진행을 누를 때까지 대기.
+                진행을 기다리는 중입니다.
               </Typography>
             )}
           </Paper>
@@ -368,7 +387,7 @@ export default function GamePage() {
             라운드 종료
           </Typography>
           <Typography className="subtle" sx={{ fontSize: 12, mt: 0.5, mb: 1.5 }}>
-            방장에게 다음 라운드/종료 선택권.
+            다음 라운드를 시작하거나 게임을 종료할 수 있습니다.
           </Typography>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -387,13 +406,13 @@ export default function GamePage() {
               disabled={!isHost}
               onClick={hostEndGame}
             >
-              게임 종료(로비)
+              게임 종료
             </Button>
           </Stack>
 
           {!isHost && (
             <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              방장만 누를 수 있음.
+              방장만 진행할 수 있습니다.
             </Typography>
           )}
         </Paper>
@@ -401,7 +420,9 @@ export default function GamePage() {
 
       {!phase && (
         <Paper className="glassCard section" sx={{ p: 2 }}>
-          <Typography className="subtle">phase 없음. 서버가 삐끗함.</Typography>
+          <Typography className="subtle">
+            진행 상태를 불러오지 못했습니다.
+          </Typography>
         </Paper>
       )}
     </Box>

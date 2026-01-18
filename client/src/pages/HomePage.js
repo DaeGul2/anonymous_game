@@ -50,7 +50,9 @@ export default function HomePage() {
     const keyword = (q || "").trim().toLowerCase();
     if (!keyword) return list;
     return list.filter((r) => {
-      const hay = `${r.title || ""} ${r.code || ""} ${r.status || ""} ${r.phase || ""}`.toLowerCase();
+      const hay = `${r.title || ""} ${r.code || ""} ${r.status || ""} ${
+        r.phase || ""
+      }`.toLowerCase();
       return hay.includes(keyword);
     });
   }, [rooms, q]);
@@ -60,19 +62,15 @@ export default function HomePage() {
       {/* Header */}
       <Box className="pageHeader">
         <Box>
-          <Typography className="pageTitle">익명게임</Typography>
+          <Typography className="pageTitle">익명 게임</Typography>
           <Typography className="subtle" sx={{ mt: 0.25 }}>
-            로그인 없이, 익명으로, 서로를 의심하며 즐기기
+            로그인 없이 방 코드를 통해 익명으로 참여합니다.
           </Typography>
         </Box>
 
         <Stack direction="row" spacing={1} alignItems="center">
-          <Button
-            variant="outlined"
-            className="tap"
-            onClick={roomList}
-          >
-            🔄
+          <Button variant="outlined" className="tap" onClick={roomList}>
+            새로고침
           </Button>
           <Button
             variant="contained"
@@ -101,15 +99,12 @@ export default function HomePage() {
           </Typography>
           <Chip
             size="small"
-            label="Quick Join"
+            label="빠른 입장"
             sx={{ fontWeight: 900, opacity: 0.85 }}
           />
         </Stack>
 
-        <Stack
-          spacing={1.25}
-          sx={{ mt: 1.5 }}
-        >
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           <TextField
             fullWidth
             label="방 코드"
@@ -119,7 +114,7 @@ export default function HomePage() {
           />
           <TextField
             fullWidth
-            label="내 닉네임"
+            label="닉네임"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             inputProps={{ maxLength: 20 }}
@@ -132,12 +127,12 @@ export default function HomePage() {
               onClick={onJoin}
               disabled={!joinCode.trim() || !nickname.trim()}
             >
-              입장하기 →
+              입장하기
             </Button>
           </Stack>
 
           <Typography className="subtle" sx={{ fontSize: 12 }}>
-            같은 방 안에서는 닉네임 중복 불가. 너도 똑같이 취급됨.
+            같은 방에서는 닉네임이 중복될 수 없습니다.
           </Typography>
         </Stack>
       </Paper>
@@ -153,27 +148,24 @@ export default function HomePage() {
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-              방 목록
+              공개 방 목록
             </Typography>
             <Chip
               size="small"
-              label={`${(rooms?.length || 0)}개`}
+              label={`${rooms?.length || 0}개`}
               sx={{ fontWeight: 900, opacity: 0.85 }}
             />
           </Stack>
 
           <TextField
             fullWidth
-            placeholder="검색: 제목/코드/상태"
+            placeholder="검색: 제목 / 코드 / 상태"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </Stack>
 
-        <RoomList
-          rooms={filteredRooms}
-          onClick={(r) => nav(`/room/${r.code}`)}
-        />
+        <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
       </Paper>
 
       <CreateRoomModal

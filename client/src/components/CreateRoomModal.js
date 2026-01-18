@@ -52,7 +52,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
           방 만들기
         </Typography>
         <Typography className="subtle" sx={{ fontSize: 12, mt: 0.4 }}>
-          방장 닉네임은 바꾸기 어렵다. 보통 인생도 그렇다.
+          방 제목과 닉네임을 입력해 주세요.
         </Typography>
       </DialogTitle>
 
@@ -77,7 +77,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
               inputProps={{ min: 2, max: 20 }}
             />
             <TextField
-              label="내 닉네임(방장)"
+              label="방장 닉네임"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               fullWidth
@@ -94,9 +94,9 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
             }}
           >
             <Typography className="subtle" sx={{ fontSize: 12 }}>
-              - 같은 방 내 닉네임 중복 불가<br />
-              - 서버 타이머 기준<br />
-              - 방치 방 자동 삭제
+              - 동일 방 내 닉네임 중복 불가<br />
+              - 제한 시간은 서버 기준으로 적용<br />
+              - 일정 시간 비활성 방은 자동 종료될 수 있음
             </Typography>
           </Paper>
         </Stack>
@@ -112,7 +112,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
           className="tap"
           disabled={!title.trim() || !nickname.trim()}
         >
-          생성 →
+          생성
         </Button>
       </DialogActions>
     </Dialog>

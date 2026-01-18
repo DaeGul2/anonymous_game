@@ -22,7 +22,7 @@ export default function TimerBar({ deadlineAt, totalSeconds }) {
     <Box sx={{ mt: 1.3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
         <Typography className="subtle" sx={{ fontSize: 12 }}>
-          남은시간
+          남은 시간
         </Typography>
         <Typography
           sx={{
@@ -36,7 +36,6 @@ export default function TimerBar({ deadlineAt, totalSeconds }) {
         </Typography>
       </Box>
 
-      {/* pill progress */}
       <Box
         sx={{
           height: 12,
@@ -62,7 +61,7 @@ export default function TimerBar({ deadlineAt, totalSeconds }) {
       </Box>
 
       <Typography className="subtle" sx={{ fontSize: 11, mt: 0.6 }}>
-        기준은 서버. 클라는 그냥 보여주기만 함.
+        시간 기준: 서버
       </Typography>
     </Box>
   );

@@ -50,7 +50,6 @@ export default function RoomLobbyPage() {
 
   const myPlayer = useMemo(() => {
     const players = state?.players || [];
-    // guest_id는 서버 state에서 안 내려도 되지만 현재는 내려오고 있음
     return players.find((p) => p.guest_id === guest_id) || null;
   }, [state, guest_id]);
 
@@ -75,7 +74,7 @@ export default function RoomLobbyPage() {
             </Typography>
           </Typography>
           <Typography className="subtle" sx={{ mt: 0.25 }}>
-            준비 완료 누르면, 서버가 알아서 굴린다
+            준비 상태를 설정하고 시작을 기다립니다.
           </Typography>
         </Box>
 
@@ -108,14 +107,14 @@ export default function RoomLobbyPage() {
         <Paper className="glassCard section" sx={{ p: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-              입장(닉네임 필요)
+              입장 정보 입력
             </Typography>
-            <Chip size="small" label="Join" sx={{ fontWeight: 900, opacity: 0.85 }} />
+            <Chip size="small" label="입장" sx={{ fontWeight: 900, opacity: 0.85 }} />
           </Stack>
 
           <Stack spacing={1.25} sx={{ mt: 1.5 }}>
             <TextField
-              label="내 닉네임"
+              label="닉네임"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               inputProps={{ maxLength: 20 }}
@@ -128,11 +127,11 @@ export default function RoomLobbyPage() {
               disabled={!nickname.trim() || !code}
               fullWidth
             >
-              입장하기 →
+              입장하기
             </Button>
 
             <Typography className="subtle" sx={{ fontSize: 12 }}>
-              재접속이면 닉네임 없이도 붙어야 정상.
+              이전에 참여한 기기라면 자동으로 재접속될 수 있습니다.
             </Typography>
           </Stack>
         </Paper>
@@ -161,7 +160,7 @@ export default function RoomLobbyPage() {
                   {state.room.title}
                 </Typography>
                 <Typography className="subtle" sx={{ fontSize: 12, mt: 0.4 }}>
-                  인원 {state.players?.length || 0}/{state.room.max_players} · phase:{" "}
+                  인원 {state.players?.length || 0}/{state.room.max_players} · 상태{" "}
                   {state.room.phase}
                 </Typography>
               </Box>
@@ -193,7 +192,9 @@ export default function RoomLobbyPage() {
                 return (
                   <Chip
                     key={p.id}
-                    label={`${p.nickname}${isHost ? " 👑" : ""}${p.is_ready ? " ✅" : ""}${isMe ? " (나)" : ""}`}
+                    label={`${p.nickname}${isHost ? " (방장)" : ""}${
+                      p.is_ready ? " · 준비" : ""
+                    }${isMe ? " · 나" : ""}`}
                     variant={p.is_connected ? "filled" : "outlined"}
                     sx={{
                       fontWeight: 900,
@@ -208,14 +209,13 @@ export default function RoomLobbyPage() {
             <ReadyPanel isReady={!!myPlayer?.is_ready} onToggle={(v) => roomReady(v)} />
 
             <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              전원 준비완료면 서버가 자동으로 게임 시작함.
+              전원이 준비 완료되면 게임이 자동으로 시작됩니다.
             </Typography>
           </Paper>
 
-          {/* Bottom action hint (optional vibe) */}
           <Box className="bottomBar section">
             <Typography className="subtle" sx={{ fontSize: 12 }}>
-              팁: 나갔다가 돌아오면 guest_id로 복구되는 게 “이론상” 맞다.
+              연결이 끊겨도 다시 입장하면 진행 상태가 복구될 수 있습니다.
             </Typography>
           </Box>
         </>

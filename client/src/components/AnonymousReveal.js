@@ -53,7 +53,7 @@ export default function AnonymousReveal({ question, answers }) {
                 익명 {idx + 1}
               </Typography>
               <Typography fontWeight={800} sx={{ whiteSpace: "pre-wrap" }}>
-                {a || "(빈 답변)"}
+                {a || "(내용 없음)"}
               </Typography>
             </Box>
           ))}
@@ -67,7 +67,7 @@ export default function AnonymousReveal({ question, answers }) {
                 border: "1px solid rgba(255,255,255,0.65)",
               }}
             >
-              <Typography fontWeight={800}>답변 없음.</Typography>
+              <Typography fontWeight={800}>제출된 답변이 없습니다.</Typography>
             </Box>
           )}
         </Stack>

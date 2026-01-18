@@ -19,18 +19,14 @@ export default function ReadyPanel({ isReady, onToggle }) {
             내 상태
           </Typography>
           <Typography className="subtle" sx={{ fontSize: 12, mt: 0.25 }}>
-            서버 기준으로 준비 상태가 반영됨
+            준비 상태는 서버 기준으로 반영됩니다.
           </Typography>
         </Box>
 
         <Chip
           size="small"
-          label={isReady ? "READY" : "WAIT"}
-          sx={{
-            fontWeight: 900,
-            borderRadius: 999,
-            opacity: 0.9,
-          }}
+          label={isReady ? "준비 완료" : "대기"}
+          sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }}
         />
       </Stack>
 

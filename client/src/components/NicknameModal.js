@@ -20,7 +20,7 @@ export default function NicknameModal({
   onSubmit,
   initialNickname = "",
   title = "닉네임 입력",
-  helper = "같은 방 안에서는 중복 불가",
+  helper = "같은 방에서는 닉네임이 중복될 수 없습니다.",
 }) {
   const [nickname, setNickname] = useState(initialNickname || "");
 
@@ -74,8 +74,8 @@ export default function NicknameModal({
             }}
           >
             <Typography className="subtle" sx={{ fontSize: 12 }}>
-              - 너무 길면 잘림<br />
-              - 특수문자/공백은 인간의 선택이지만 보통 후회함
+              - 20자 이내 권장<br />
+              - 특수문자는 일부 환경에서 표시가 제한될 수 있음
             </Typography>
           </Paper>
         </Stack>
@@ -91,7 +91,7 @@ export default function NicknameModal({
           className="tap"
           disabled={!nickname.trim()}
         >
-          확인 →
+          확인
         </Button>
       </DialogActions>
     </Dialog>

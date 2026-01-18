@@ -20,7 +20,6 @@ export default function QuestionInput({
   const [editing, setEditing] = useState(!submitted);
   const [draft, setDraft] = useState(savedText || "");
 
-  // 저장 인터랙션
   const [saving, setSaving] = useState(false);
   const [flashSaved, setFlashSaved] = useState(false);
   const [lastSavedLabel, setLastSavedLabel] = useState("");
@@ -34,21 +33,15 @@ export default function QuestionInput({
     flashTimerRef.current = setTimeout(() => setFlashSaved(false), 1400);
   };
 
-  // savedText 바뀌면 draft도 따라감(단, 편집 중이면 유지)
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
   }, [savedText, editing]);
 
-  // 서버에서 savedText/submitted가 바뀌면 "저장됨" 피드백도 띄움
   useEffect(() => {
-    if (submitted || (savedText ?? "") !== "") {
-      // 저장 직후 서버 반영이 왔을 때도 표시
-      triggerSavedFeedback();
-    }
+    if (submitted || (savedText ?? "") !== "") triggerSavedFeedback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, savedText]);
 
-  // 마감되면 편집 취소 + draft 원복
   useEffect(() => {
     if (!canEdit && editing) {
       setEditing(false);
@@ -65,12 +58,12 @@ export default function QuestionInput({
   }, []);
 
   const statusText = saving
-    ? "저장 중..."
+    ? "저장 중"
     : flashSaved
-    ? "저장 완료 ✅"
+    ? "저장 완료"
     : submitted
     ? "저장됨"
-    : "미제출";
+    : "미저장";
 
   const statusColor = saving
     ? "primary.main"
@@ -85,7 +78,6 @@ export default function QuestionInput({
     try {
       onSave(draft);
     } finally {
-      // 서버 ack 없어도 사용자에게는 즉시 반응이 있어야 함
       triggerSavedFeedback();
       if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
       savingTimerRef.current = setTimeout(() => setSaving(false), 280);
@@ -106,7 +98,7 @@ export default function QuestionInput({
       {!editing ? (
         <>
           <Box sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
-            <Typography variant="body1">{savedText || "(아직 없음)"}</Typography>
+            <Typography variant="body1">{savedText || "(작성 내용 없음)"}</Typography>
           </Box>
 
           <Stack direction="row" spacing={1} sx={{ mt: 2 }} alignItems="center">
@@ -129,8 +121,12 @@ export default function QuestionInput({
           </Stack>
 
           {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감. 이제 수정 못 함.
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              마감되어 수정할 수 없습니다.
             </Typography>
           )}
         </>
@@ -138,7 +134,7 @@ export default function QuestionInput({
         <>
           <TextField
             fullWidth
-            label="질문 수정"
+            label="질문"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={!canEdit}
@@ -154,7 +150,7 @@ export default function QuestionInput({
               disabled={!canEdit || saving}
               onClick={handleSave}
             >
-              {saving ? "저장 중..." : "저장"}
+              {saving ? "저장 중" : "저장"}
             </Button>
 
             <Button
@@ -175,8 +171,12 @@ export default function QuestionInput({
           </Stack>
 
           {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감돼서 저장 불가. 기존 저장본이 사용됨.
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              마감되어 저장할 수 없습니다. 기존 저장본이 유지됩니다.
             </Typography>
           )}
         </>

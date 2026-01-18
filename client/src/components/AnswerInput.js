@@ -4,7 +4,10 @@ import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material"
 
 function nowLabel() {
   try {
-    return new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    return new Date().toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return "";
   }
@@ -38,9 +41,7 @@ export default function AnswerInput({
   }, [savedText, editing]);
 
   useEffect(() => {
-    if (submitted || (savedText ?? "") !== "") {
-      triggerSavedFeedback();
-    }
+    if (submitted || (savedText ?? "") !== "") triggerSavedFeedback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, savedText]);
 
@@ -60,12 +61,12 @@ export default function AnswerInput({
   }, []);
 
   const statusText = saving
-    ? "저장 중..."
+    ? "저장 중"
     : flashSaved
-    ? "저장 완료 ✅"
+    ? "저장 완료"
     : submitted
     ? "저장됨"
-    : "미제출";
+    : "미저장";
 
   const statusColor = saving
     ? "primary.main"
@@ -100,7 +101,7 @@ export default function AnswerInput({
       {!editing ? (
         <>
           <Box sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
-            <Typography variant="body1">{savedText || "(아직 없음)"}</Typography>
+            <Typography variant="body1">{savedText || "(작성 내용 없음)"}</Typography>
           </Box>
 
           <Stack direction="row" spacing={1} sx={{ mt: 2 }} alignItems="center">
@@ -123,8 +124,12 @@ export default function AnswerInput({
           </Stack>
 
           {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감. 이제 수정 못 함.
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              마감되어 수정할 수 없습니다.
             </Typography>
           )}
         </>
@@ -132,7 +137,7 @@ export default function AnswerInput({
         <>
           <TextField
             fullWidth
-            label="답변 수정"
+            label="답변"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={!canEdit}
@@ -148,7 +153,7 @@ export default function AnswerInput({
               disabled={!canEdit || saving}
               onClick={handleSave}
             >
-              {saving ? "저장 중..." : "저장"}
+              {saving ? "저장 중" : "저장"}
             </Button>
 
             <Button
@@ -169,8 +174,12 @@ export default function AnswerInput({
           </Stack>
 
           {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감돼서 저장 불가. 기존 저장본이 사용됨.
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              마감되어 저장할 수 없습니다. 기존 저장본이 유지됩니다.
             </Typography>
           )}
         </>

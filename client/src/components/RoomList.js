@@ -1,13 +1,6 @@
 // src/components/RoomList.js
 import React from "react";
-import {
-  Box,
-  ButtonBase,
-  Chip,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, ButtonBase, Chip, Paper, Stack, Typography } from "@mui/material";
 
 function statusChip(r) {
   const phase = r?.phase || r?.status || "UNKNOWN";
@@ -16,12 +9,8 @@ function statusChip(r) {
   return (
     <Chip
       size="small"
-      label={isInGame ? "게임중" : phase}
-      sx={{
-        fontWeight: 900,
-        opacity: 0.9,
-        borderRadius: 999,
-      }}
+      label={isInGame ? "진행 중" : "대기"}
+      sx={{ fontWeight: 900, opacity: 0.9, borderRadius: 999 }}
       color={isInGame ? "warning" : "default"}
     />
   );
@@ -34,10 +23,10 @@ export default function RoomList({ rooms, onClick }) {
     return (
       <Box sx={{ py: 2 }}>
         <Typography fontWeight={900} sx={{ opacity: 0.75 }}>
-          방 없음. 누가 좀 만들어라.
+          현재 공개된 방이 없습니다.
         </Typography>
         <Typography className="subtle" sx={{ mt: 0.5 }}>
-          (대부분 아무도 안 만들지. 인간이라서.)
+          새로고침하거나 방을 생성해 주세요.
         </Typography>
       </Box>
     );
@@ -72,13 +61,10 @@ export default function RoomList({ rooms, onClick }) {
                 borderRadius: 3,
                 transition: "transform 120ms ease, box-shadow 120ms ease",
                 "&:active": { transform: isInGame ? "none" : "scale(0.99)" },
-                ...(isInGame
-                  ? { filter: "grayscale(0.15)" }
-                  : {}),
+                ...(isInGame ? { filter: "grayscale(0.15)" } : {}),
               }}
             >
               <Stack direction="row" spacing={1.25} alignItems="center">
-                {/* Avatar-ish bubble */}
                 <Box
                   sx={{
                     width: 44,
@@ -103,14 +89,14 @@ export default function RoomList({ rooms, onClick }) {
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {r.title || "Untitled Room"}{" "}
+                    {r.title || "제목 없음"}{" "}
                     <Typography component="span" className="subtle" sx={{ fontSize: 12 }}>
                       ({r.code})
                     </Typography>
                   </Typography>
 
                   <Typography className="subtle" sx={{ fontSize: 12, mt: 0.4 }}>
-                    인원 {r.player_count}/{r.max_players} · 상태 {phase}
+                    인원 {r.player_count}/{r.max_players}
                     {isInGame ? " · 입장 불가" : ""}
                   </Typography>
                 </Box>
