@@ -1,6 +1,15 @@
 // src/pages/RoomLobbyPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Button, Chip, Container, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import ReadyPanel from "../components/ReadyPanel";
 import { useRoomStore } from "../state/useRoomStore";
@@ -49,70 +58,168 @@ export default function RoomLobbyPage() {
     roomJoin({ code: code.toUpperCase(), nickname });
   };
 
+  const onExit = () => {
+    roomLeave();
+    nav("/");
+  };
+
   return (
-    <Container sx={{ py: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6" fontWeight={800}>
-          로비 {code ? `(${code.toUpperCase()})` : ""}
-        </Typography>
-        <Button color="error" variant="outlined" onClick={() => { roomLeave(); nav("/"); }}>
-          나가기
-        </Button>
-      </Stack>
+    <Box className="appShell">
+      {/* Header */}
+      <Box className="pageHeader">
+        <Box>
+          <Typography className="pageTitle">
+            로비{" "}
+            <Typography component="span" className="subtle" sx={{ fontSize: 14 }}>
+              {code ? `(${code.toUpperCase()})` : ""}
+            </Typography>
+          </Typography>
+          <Typography className="subtle" sx={{ mt: 0.25 }}>
+            준비 완료 누르면, 서버가 알아서 굴린다
+          </Typography>
+        </Box>
 
+        <Stack direction="row" spacing={1} alignItems="center">
+          <IconButton
+            onClick={onExit}
+            className="tap"
+            sx={{
+              border: "1px solid rgba(255,255,255,0.65)",
+              background: "rgba(255,255,255,0.45)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            ✕
+          </IconButton>
+        </Stack>
+      </Box>
+
+      {/* Error */}
       {error && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography color="error">{error}</Typography>
-        </Paper>
-      )}
-
-      {!state?.room && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700}>입장(닉네임 필요)</Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            <TextField label="내 닉네임" value={nickname} onChange={(e) => setNickname(e.target.value)} />
-            <Button variant="contained" onClick={doJoin}>입장</Button>
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            재접속이면 닉네임 없이도 붙어야 정상.
+        <Paper className="glassCard section" sx={{ p: 2 }}>
+          <Typography color="error" fontWeight={900}>
+            {error}
           </Typography>
         </Paper>
       )}
 
+      {/* Not joined yet */}
+      {!state?.room && (
+        <Paper className="glassCard section" sx={{ p: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
+              입장(닉네임 필요)
+            </Typography>
+            <Chip size="small" label="Join" sx={{ fontWeight: 900, opacity: 0.85 }} />
+          </Stack>
+
+          <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+            <TextField
+              label="내 닉네임"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              inputProps={{ maxLength: 20 }}
+              fullWidth
+            />
+            <Button
+              variant="contained"
+              onClick={doJoin}
+              className="tap"
+              disabled={!nickname.trim() || !code}
+              fullWidth
+            >
+              입장하기 →
+            </Button>
+
+            <Typography className="subtle" sx={{ fontSize: 12 }}>
+              재접속이면 닉네임 없이도 붙어야 정상.
+            </Typography>
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Joined */}
       {state?.room && (
         <>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>{state.room.title}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              인원 {state.players?.length || 0}/{state.room.max_players} · phase: {state.room.phase}
+          {/* Room info */}
+          <Paper className="glassCard section" sx={{ p: 2 }}>
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              <Box
+                sx={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 999,
+                  background:
+                    "radial-gradient(circle at 30% 30%, rgba(236,72,153,0.55), rgba(139,92,246,0.55), rgba(59,130,246,0.35))",
+                  border: "1px solid rgba(255,255,255,0.55)",
+                  boxShadow: "0 10px 24px rgba(17,24,39,0.08)",
+                  flex: "0 0 auto",
+                }}
+              />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
+                  {state.room.title}
+                </Typography>
+                <Typography className="subtle" sx={{ fontSize: 12, mt: 0.4 }}>
+                  인원 {state.players?.length || 0}/{state.room.max_players} · phase:{" "}
+                  {state.room.phase}
+                </Typography>
+              </Box>
+              <Chip
+                size="small"
+                label={state.room.phase || "lobby"}
+                sx={{ fontWeight: 900, opacity: 0.85, borderRadius: 999 }}
+              />
+            </Stack>
+          </Paper>
+
+          {/* Players */}
+          <Paper className="glassCard section" sx={{ p: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
+                참여자
+              </Typography>
+              <Chip
+                size="small"
+                label={`${state.players?.length || 0}명`}
+                sx={{ fontWeight: 900, opacity: 0.85 }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.25 }}>
+              {(state.players || []).map((p) => {
+                const isHost = p.id === state.room.host_player_id;
+                const isMe = p.guest_id === guest_id;
+                return (
+                  <Chip
+                    key={p.id}
+                    label={`${p.nickname}${isHost ? " 👑" : ""}${p.is_ready ? " ✅" : ""}${isMe ? " (나)" : ""}`}
+                    variant={p.is_connected ? "filled" : "outlined"}
+                    sx={{
+                      fontWeight: 900,
+                      borderRadius: 999,
+                      opacity: p.is_connected ? 1 : 0.7,
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+
+            <ReadyPanel isReady={!!myPlayer?.is_ready} onToggle={(v) => roomReady(v)} />
+
+            <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
+              전원 준비완료면 서버가 자동으로 게임 시작함.
             </Typography>
           </Paper>
 
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={700}>참여자</Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-              {(state.players || []).map((p) => (
-                <Chip
-                  key={p.id}
-                  label={`${p.nickname}${p.id === state.room.host_player_id ? " (방장)" : ""}${p.is_ready ? " ✅" : ""}`}
-                  variant={p.is_connected ? "filled" : "outlined"}
-                />
-              ))}
-            </Stack>
-
-            <ReadyPanel
-              isReady={!!myPlayer?.is_ready}
-              onToggle={(v) => roomReady(v)}
-            />
-
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                전원 준비완료면 서버가 자동으로 게임 시작함.
-              </Typography>
-            </Box>
-          </Paper>
+          {/* Bottom action hint (optional vibe) */}
+          <Box className="bottomBar section">
+            <Typography className="subtle" sx={{ fontSize: 12 }}>
+              팁: 나갔다가 돌아오면 guest_id로 복구되는 게 “이론상” 맞다.
+            </Typography>
+          </Box>
         </>
       )}
-    </Container>
+    </Box>
   );
 }

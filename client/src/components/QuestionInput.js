@@ -1,23 +1,21 @@
 // src/components/QuestionInput.js
 import React, { useEffect, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
 
 export default function QuestionInput({
   canEdit,
   savedText,
   submitted,
   onSave,
-  deadlineExpiredSignal, // number 증가하면 "마감됐다"로 간주해서 편집 취소
+  deadlineExpiredSignal,
 }) {
   const [editing, setEditing] = useState(!submitted);
   const [draft, setDraft] = useState(savedText || "");
 
-  // savedText 바뀌면 draft도 따라감(단, 편집 중이면 유지)
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
   }, [savedText, editing]);
 
-  // 마감되면 편집 취소 + draft 원복
   useEffect(() => {
     if (!canEdit && editing) {
       setEditing(false);
@@ -27,79 +25,94 @@ export default function QuestionInput({
   }, [deadlineExpiredSignal]);
 
   const statusText = submitted ? "저장됨" : "미제출";
-  const statusColor = submitted ? "success.main" : "text.secondary";
 
   return (
-    <Paper sx={{ p: 2, mt: 2 }}>
+    <Paper className="glassCard section" sx={{ p: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle1" fontWeight={800}>
+        <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
           내 질문
         </Typography>
-        <Typography variant="body2" sx={{ color: statusColor }}>
-          {statusText}
-        </Typography>
+        <Chip size="small" label={statusText} sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }} />
       </Stack>
 
       {!editing ? (
         <>
-          <Box sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
-            <Typography variant="body1">{savedText || "(아직 없음)"}</Typography>
+          <Box
+            sx={{
+              mt: 1.25,
+              p: 1.4,
+              borderRadius: 4,
+              background: "rgba(255,255,255,0.55)",
+              border: "1px solid rgba(255,255,255,0.65)",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            <Typography fontWeight={800}>{savedText || "(아직 없음)"}</Typography>
           </Box>
 
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-            <Button
-              variant="outlined"
-              disabled={!canEdit}
-              onClick={() => {
-                setDraft(savedText || "");
-                setEditing(true);
-              }}
-            >
-              수정
-            </Button>
-          </Stack>
-
-          {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감. 이제 수정 못 함.
-            </Typography>
-          )}
+          <Box className="inputActions">
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                className="tap"
+                disabled={!canEdit}
+                onClick={() => {
+                  setDraft(savedText || "");
+                  setEditing(true);
+                }}
+              >
+                수정
+              </Button>
+            </Stack>
+            {!canEdit && (
+              <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
+                마감. 이제 수정 못 함.
+              </Typography>
+            )}
+          </Box>
         </>
       ) : (
         <>
           <TextField
             fullWidth
-            label="질문 수정"
+            label="질문"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={!canEdit}
-            sx={{ mt: 2 }}
+            multiline
+            minRows={4}
+            maxRows={10}
+            sx={{ mt: 1.5 }}
           />
 
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              disabled={!canEdit}
-              onClick={() => onSave(draft)}
-            >
-              저장
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setEditing(false);
-                setDraft(savedText || "");
-              }}
-            >
-              취소
-            </Button>
-          </Stack>
+          <Box className="inputActions">
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                className="tap grow"
+                disabled={!canEdit}
+                onClick={() => onSave(draft)}
+              >
+                저장
+              </Button>
+              <Button
+                variant="outlined"
+                className="tap"
+                onClick={() => {
+                  setEditing(false);
+                  setDraft(savedText || "");
+                }}
+              >
+                취소
+              </Button>
+            </Stack>
 
-          {!canEdit && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              마감돼서 저장 불가. 기존 저장본이 사용됨.
-            </Typography>
-          )}
+            {!canEdit && (
+              <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
+                마감돼서 저장 불가. 기존 저장본이 사용됨.
+              </Typography>
+            )}
+          </Box>
         </>
       )}
     </Paper>
