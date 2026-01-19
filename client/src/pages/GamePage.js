@@ -58,6 +58,128 @@ function phaseLabel(p) {
   return p || "-";
 }
 
+/** ====== pretty overlay ====== */
+function StageOverlay({ open, titleTop, count, bottomText, announceText }) {
+  if (!open) return null;
+
+  const isAnnounce = count == null;
+
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2200, // header(1100) above
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 2,
+        py: 2,
+        background:
+          "radial-gradient(1200px 600px at 50% 20%, rgba(255,255,255,0.30), rgba(0,0,0,0.55))",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 520,
+          borderRadius: 6,
+          border: "1px solid rgba(255,255,255,0.35)",
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
+          boxShadow: "0 30px 90px rgba(0,0,0,0.35)",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            pt: 2.2,
+            pb: 1.4,
+            textAlign: "center",
+            background:
+              "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(139,92,246,0.18))",
+            borderBottom: "1px solid rgba(255,255,255,0.45)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: 950,
+              letterSpacing: "-0.03em",
+              fontSize: { xs: 16, sm: 17 },
+              color: "rgba(17,24,39,0.90)",
+            }}
+          >
+            {titleTop}
+          </Typography>
+        </Box>
+
+        <Box sx={{ p: 2.3, textAlign: "center" }}>
+          {isAnnounce ? (
+            <Typography
+              sx={{
+                fontWeight: 950,
+                letterSpacing: "-0.03em",
+                fontSize: { xs: 24, sm: 28 },
+                lineHeight: 1.15,
+                color: "rgba(17,24,39,0.92)",
+              }}
+            >
+              {announceText}
+            </Typography>
+          ) : (
+            <Typography
+              sx={{
+                fontWeight: 1000,
+                letterSpacing: "-0.06em",
+                fontSize: { xs: 84, sm: 96 },
+                lineHeight: 1,
+                color: "rgba(17,24,39,0.92)",
+                textShadow: "0 10px 35px rgba(0,0,0,0.18)",
+              }}
+            >
+              {count}
+            </Typography>
+          )}
+
+          {!isAnnounce && (
+            <Typography
+              sx={{
+                mt: 1.2,
+                fontWeight: 900,
+                fontSize: { xs: 14, sm: 15 },
+                color: "rgba(17,24,39,0.72)",
+              }}
+            >
+              {bottomText}
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            px: 2,
+            pb: 2.2,
+            textAlign: "center",
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: 12,
+              color: "rgba(17,24,39,0.55)",
+            }}
+          >
+            (집중 안 하면 인생도 똑같이 흘러갑니다)
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export default function GamePage() {
   const { code } = useParams();
   const nav = useNavigate();
@@ -140,8 +262,6 @@ export default function GamePage() {
   const roundNo = state?.room?.current_round_no || game.round_no || 0;
 
   /** ====== 질문/답변 local persistence ====== */
-
-  // 질문: 서버 저장본이 있으면 그걸 사용, 없으면 로컬 저장본 표시
   const qKey = useMemo(
     () => keyQuestion({ code: code?.toUpperCase(), roundNo }),
     [code, roundNo]
@@ -159,7 +279,6 @@ export default function GamePage() {
     return !!(qLocal?.text && String(qLocal.text).trim());
   }, [game.question_submitted, qLocal]);
 
-  // 서버 제출이 확인되면 해당 로컬 백업 삭제(중복/혼동 방지)
   useEffect(() => {
     if (game.question_submitted && qLocal?.text) {
       lsDel(qKey);
@@ -167,7 +286,6 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.question_submitted]);
 
-  // 답변: 현재 질문(qid) 기준으로 로컬 저장/복원
   const currentQid = game.current_question?.id || "";
   const aKey = useMemo(
     () =>
@@ -199,13 +317,11 @@ export default function GamePage() {
     return !!(aLocal?.text && String(aLocal.text).trim());
   }, [myAnswerSubmitted, aLocal]);
 
-  // 서버 제출 확인되면 로컬 백업 삭제
   useEffect(() => {
     if (myAnswerSubmitted && aKey) lsDel(aKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myAnswerSubmitted, aKey]);
 
-  // 저장 버튼 누를 때: 서버 전송 + 로컬에도 백업 저장
   const handleSaveQuestion = (text) => {
     if (!code) return;
     lsSet(qKey, { text: String(text ?? ""), ts: Date.now() });
@@ -218,8 +334,117 @@ export default function GamePage() {
     gameSubmitAnswer(text);
   };
 
+  /** ====== overlay control (ask/reveal entry) ====== */
+  const timeoutsRef = useRef([]);
+  const seenOnceRef = useRef(false);
+  const lastAskQidRef = useRef("");
+  const lastRevealQidRef = useRef("");
+
+  const [overlay, setOverlay] = useState({
+    open: false,
+    titleTop: "",
+    bottomText: "",
+    count: null,
+    announceText: "",
+  });
+
+  const clearAllTimers = () => {
+    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current = [];
+  };
+
+  const runOverlaySequence = ({ titleTop, announceText }) => {
+    clearAllTimers();
+
+    // countdown 3 -> 2 -> 1
+    setOverlay({
+      open: true,
+      titleTop,
+      bottomText: "초 후 공개!",
+      count: 3,
+      announceText,
+    });
+
+    const t1 = setTimeout(() => setOverlay((o) => ({ ...o, count: 2 })), 1000);
+    const t2 = setTimeout(() => setOverlay((o) => ({ ...o, count: 1 })), 2000);
+
+    // announce
+    const t3 = setTimeout(() => {
+      setOverlay((o) => ({
+        ...o,
+        count: null,
+      }));
+    }, 3000);
+
+    // hide
+    const t4 = setTimeout(() => {
+      setOverlay((o) => ({ ...o, open: false }));
+    }, 3800);
+
+    timeoutsRef.current = [t1, t2, t3, t4];
+  };
+
+  // trigger on ask entry (new question)
+  useEffect(() => {
+    const qid = game.current_question?.id || "";
+    if (phase !== "ask" || !qid) return;
+
+    // 첫 로드(재합류/새로고침)에서는 굳이 오버레이 강제하지 않음
+    if (!seenOnceRef.current) {
+      seenOnceRef.current = true;
+      lastAskQidRef.current = qid;
+      return;
+    }
+
+    if (lastAskQidRef.current !== qid) {
+      lastAskQidRef.current = qid;
+      runOverlaySequence({
+        titleTop: "질문이 모두 등록됐습니다!",
+        announceText: "질문을 공개합니다!",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, game.current_question?.id]);
+
+  // trigger on reveal entry (new reveal question)
+  useEffect(() => {
+    const rqid = game.reveal?.question?.id || "";
+    if (phase !== "reveal" || !rqid) return;
+
+    if (!seenOnceRef.current) {
+      seenOnceRef.current = true;
+      lastRevealQidRef.current = rqid;
+      return;
+    }
+
+    if (lastRevealQidRef.current !== rqid) {
+      lastRevealQidRef.current = rqid;
+      runOverlaySequence({
+        titleTop: "응답이 모두 등록됐습니다!!",
+        announceText: "응답을 공개합니다!",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, game.reveal?.question?.id]);
+
+  useEffect(() => {
+    return () => clearAllTimers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const stickyTop = "calc(var(--header-h) + env(safe-area-inset-top) + 10px)";
+
   return (
     <Box className="appShell">
+      {/* overlay (ask/reveal attention grab) */}
+      <StageOverlay
+        open={overlay.open}
+        titleTop={overlay.titleTop}
+        count={overlay.count}
+        bottomText={overlay.bottomText}
+        announceText={overlay.announceText}
+      />
+
       {/* Header */}
       <Box className="pageHeader">
         <Box style={{ minWidth: 0 }}>
@@ -317,29 +542,61 @@ export default function GamePage() {
       {/* ===== ask: 답변 ===== */}
       {phase === "ask" && (
         <>
-          <Paper className="glassCard section" sx={{ p: 2 }}>
-            <Typography className="subtle" sx={{ fontSize: 12 }}>
-              현재 질문
-            </Typography>
+          {/* sticky question banner: 모바일에서 질문이 "무조건" 보이게 */}
+          <Paper
+            className="glassCard section"
+            sx={{
+              p: 1.8,
+              position: "sticky",
+              top: stickyTop,
+              zIndex: 60,
+              borderRadius: 6,
+              background:
+                "linear-gradient(135deg, rgba(236,72,153,0.22), rgba(139,92,246,0.22))",
+              border: "1px solid rgba(255,255,255,0.70)",
+              boxShadow: "0 18px 50px rgba(0,0,0,0.10)",
+            }}
+          >
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  label="Q"
+                  size="small"
+                  sx={{
+                    fontWeight: 950,
+                    borderRadius: 999,
+                    bgcolor: "rgba(17,24,39,0.88)",
+                    color: "white",
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontWeight: 950,
+                    letterSpacing: "-0.02em",
+                    color: "rgba(17,24,39,0.82)",
+                  }}
+                >
+                  현재 질문
+                </Typography>
+              </Stack>
 
-            <Box
-              sx={{
-                mt: 1,
-                p: 1.4,
-                borderRadius: 4,
-                background:
-                  "linear-gradient(135deg, rgba(236,72,153,0.20), rgba(139,92,246,0.20))",
-                border: "1px solid rgba(255,255,255,0.65)",
-              }}
-            >
-              <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
+              <Typography
+                sx={{
+                  fontWeight: 1000,
+                  letterSpacing: "-0.03em",
+                  fontSize: { xs: 19, sm: 22 },
+                  lineHeight: 1.22,
+                  color: "rgba(17,24,39,0.92)",
+                  wordBreak: "keep-all",
+                }}
+              >
                 {game.current_question?.text || "질문을 불러오는 중입니다."}
               </Typography>
-            </Box>
 
-            <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
-            </Typography>
+              <Typography className="subtle" sx={{ fontSize: 12 }}>
+                저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
+              </Typography>
+            </Stack>
           </Paper>
 
           <AnswerInput
