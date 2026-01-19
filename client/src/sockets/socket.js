@@ -1,4 +1,4 @@
-// src/sockets/socket.js
+// client/src/sockets/socket.js
 import { io } from "socket.io-client";
 
 let socket = null;
@@ -10,9 +10,9 @@ export function getSocket() {
 export function connectSocket() {
   if (socket) return socket;
 
-  const url = process.env.REACT_APP_SOCKET_URL || "http://localhost:5000";
-
-  socket = io(url, {
+  // ✅ 같은 도메인으로 붙기 (https면 자동으로 wss로 감)
+  socket = io(window.location.origin, {
+    path: "/socket.io",
     transports: ["websocket"],
     reconnection: true,
     reconnectionAttempts: Infinity,
