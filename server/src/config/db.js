@@ -18,7 +18,7 @@ async function initDb() {
   require("../models");
 
   // 친구들 게임이니까 일단 자동 생성. 나중에 안정되면 migration으로 바꿔.
-  await sequelize.sync({ alter: true }); // avatar 컬럼 추가 후 다시 주석 처리
+  await sequelize.sync({ alter: false }); // 프로덕션에서는 alter: false (수동 마이그레이션 사용)
 }
 
 module.exports = { sequelize, initDb };

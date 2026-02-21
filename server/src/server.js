@@ -63,6 +63,9 @@ passport.deserializeUser(async (id, done) => {
 async function main() {
   const app = express();
 
+  // Nginx 리버스 프록시 뒤에 있을 때 X-Forwarded-* 신뢰
+  app.set("trust proxy", 1);
+
   // CORS: 클라이언트 origin만 허용 + credentials
   app.use(
     cors({
@@ -80,7 +83,7 @@ async function main() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,       // localhost는 false, 프로덕션에서 true로
+      secure: process.env.NODE_ENV === "production",  // HTTPS 환경에서 자동 true
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30일 (로그아웃 안 하면 유지)
     },
