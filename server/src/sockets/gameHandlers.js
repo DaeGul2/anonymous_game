@@ -10,6 +10,19 @@ function fail(socket, event, message) {
 }
 
 module.exports = (io, socket) => {
+  // 방장이 전원 준비 후 직접 게임 시작
+  socket.on("game:start", async () => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) return fail(socket, "game:start:res", "세션 없음");
+
+      await game.hostStartGame(io, sess.roomCode, sess.playerId);
+      ok(socket, "game:start:res", {});
+    } catch (e) {
+      fail(socket, "game:start:res", e?.message || "game start failed");
+    }
+  });
+
   socket.on("game:submitQuestion", async ({ text } = {}) => {
     try {
       const sess = getSocketSession(socket.id);

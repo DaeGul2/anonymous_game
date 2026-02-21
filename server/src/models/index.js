@@ -6,14 +6,19 @@ const PlayerModel = require("./Player");
 const RoundModel = require("./Round");
 const QuestionModel = require("./Question");
 const AnswerModel = require("./Answer");
+const UserModel = require("./User");
 
 const Room = RoomModel(sequelize);
 const Player = PlayerModel(sequelize);
 const Round = RoundModel(sequelize);
 const Question = QuestionModel(sequelize);
 const Answer = AnswerModel(sequelize);
+const User = UserModel(sequelize);
 
 // ===== Associations =====
+User.hasMany(Player, { foreignKey: "user_id", as: "players", onDelete: "CASCADE" });
+Player.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
 Room.hasMany(Player, { foreignKey: "room_id", as: "players", onDelete: "CASCADE" });
 Player.belongsTo(Room, { foreignKey: "room_id", as: "room" });
 
@@ -49,4 +54,5 @@ module.exports = {
   Round,
   Question,
   Answer,
+  User,
 };

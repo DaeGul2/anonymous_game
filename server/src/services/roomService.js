@@ -49,7 +49,7 @@ async function listRooms() {
   }));
 }
 
-async function createRoom({ title, max_players, hostNickname, guest_id }) {
+async function createRoom({ title, max_players, hostNickname, user_id, avatar }) {
   const nickname = normalizeNickname(hostNickname);
   const code = await generateUniqueRoomCode();
 
@@ -69,8 +69,9 @@ async function createRoom({ title, max_players, hostNickname, guest_id }) {
     const host = await Player.create(
       {
         room_id: room.id,
-        guest_id,
+        user_id,
         nickname,
+        avatar: Number.isInteger(Number(avatar)) ? Number(avatar) : 0,
         is_ready: false,
         joined_at: new Date(),
         last_seen_at: new Date(),
@@ -115,8 +116,9 @@ async function getRoomState(roomId) {
     },
     players: players.map((p) => ({
       id: p.id,
-      guest_id: p.guest_id, // 클라로 내려도 큰 문제는 없지만, 원하면 제거 가능
+      user_id: p.user_id,
       nickname: p.nickname,
+      avatar: p.avatar ?? 0,
       is_ready: p.is_ready,
       is_connected: p.is_connected,
       joined_at: p.joined_at,
@@ -124,16 +126,16 @@ async function getRoomState(roomId) {
   };
 }
 
-async function joinRoom({ code, nickname, guest_id }) {
+async function joinRoom({ code, nickname, user_id, avatar }) {
   const nn = normalizeNickname(nickname);
 
   return await sequelize.transaction(async (t) => {
     const room = await Room.findOne({ where: { code }, transaction: t, lock: t.LOCK.UPDATE });
     if (!room) throw new Error("방을 찾을 수 없음");
 
-    // 이미 같은 guest_id가 있으면 재접속 처리로 간주
+    // 이미 같은 user_id가 있으면 재접속 처리로 간주
     const existing = await Player.findOne({
-      where: { room_id: room.id, guest_id },
+      where: { room_id: room.id, user_id },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
@@ -171,8 +173,9 @@ async function joinRoom({ code, nickname, guest_id }) {
     const player = await Player.create(
       {
         room_id: room.id,
-        guest_id,
+        user_id,
         nickname: nn,
+        avatar: Number.isInteger(Number(avatar)) ? Number(avatar) : 0,
         is_ready: false,
         joined_at: new Date(),
         last_seen_at: new Date(),
@@ -313,6 +316,29 @@ async function markConnected({ roomId, playerId }) {
   }
 }
 
+/** 유저가 현재 참여 중인 활성 방 반환 (없으면 null) */
+async function getMyActiveRoom(userId) {
+  const player = await Player.findOne({
+    where: { user_id: userId },
+    include: [{
+      model: Room,
+      as: "room",
+      where: { status: { [Op.in]: ["lobby", "playing"] } },
+      required: true,
+    }],
+  });
+
+  if (!player) return { room: null };
+
+  return {
+    room: {
+      code: player.room.code,
+      phase: player.room.phase,
+      title: player.room.title,
+    },
+  };
+}
+
 module.exports = {
   listRooms,
   createRoom,
@@ -324,4 +350,5 @@ module.exports = {
   transferHostIfNeeded,
   markDisconnected,
   markConnected,
+  getMyActiveRoom,
 };

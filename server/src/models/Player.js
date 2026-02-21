@@ -9,11 +9,12 @@ module.exports = (sequelize) => {
 
       room_id: { type: DataTypes.UUID, allowNull: false },
 
-      // 로그인 없는 고정 식별자(클라 localStorage에 저장된 UUID)
-      guest_id: { type: DataTypes.STRING(64), allowNull: false },
+      // Google 로그인 유저 FK
+      user_id: { type: DataTypes.UUID, allowNull: false },
 
       nickname: { type: DataTypes.STRING(30), allowNull: false },
-      is_ready: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      avatar:   { type: DataTypes.TINYINT,   allowNull: true,  defaultValue: 0 },
+      is_ready: { type: DataTypes.BOOLEAN,   allowNull: false, defaultValue: false },
 
       joined_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       last_seen_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
@@ -25,11 +26,11 @@ module.exports = (sequelize) => {
       timestamps: true,
       indexes: [
         { fields: ["room_id"] },
-        { fields: ["guest_id"] },
+        { fields: ["user_id"] },
         // 같은 방에서 닉네임 중복 불허(요구사항)
         { unique: true, fields: ["room_id", "nickname"] },
-        // 같은 방에서 같은 guest_id는 1명(재접속 복구용)
-        { unique: true, fields: ["room_id", "guest_id"] },
+        // 같은 방에서 같은 user_id는 1명(재접속 복구용)
+        { unique: true, fields: ["room_id", "user_id"] },
       ],
     }
   );

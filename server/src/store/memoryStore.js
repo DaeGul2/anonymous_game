@@ -7,7 +7,7 @@ function ensureRoomRuntime(roomCode) {
   if (!r) {
     r = {
       roomId: null,
-      socketsByGuestId: new Map(),
+      socketsByUserId: new Map(),
       timers: new Map(), // name -> timeoutId
       game: {
         roundId: null,
@@ -29,13 +29,13 @@ function touchRoom(roomCode, roomId) {
   r.updatedAt = Date.now();
 }
 
-function attachSocket({ socketId, guestId, roomCode, playerId, roomId }) {
-  sockets.set(socketId, { guestId, roomCode, playerId });
+function attachSocket({ socketId, userId, roomCode, playerId, roomId }) {
+  sockets.set(socketId, { userId, roomCode, playerId });
 
   if (roomCode) {
     const r = ensureRoomRuntime(roomCode);
     if (roomId) r.roomId = roomId;
-    r.socketsByGuestId.set(guestId, socketId);
+    r.socketsByUserId.set(userId, socketId);
     r.updatedAt = Date.now();
   }
 }
@@ -45,10 +45,10 @@ function detachSocket(socketId) {
   sockets.delete(socketId);
   if (!s) return;
 
-  const { guestId, roomCode } = s;
+  const { userId, roomCode } = s;
   if (roomCode && rooms.has(roomCode)) {
     const r = rooms.get(roomCode);
-    if (r.socketsByGuestId.get(guestId) === socketId) r.socketsByGuestId.delete(guestId);
+    if (r.socketsByUserId.get(userId) === socketId) r.socketsByUserId.delete(userId);
     r.updatedAt = Date.now();
   }
 }

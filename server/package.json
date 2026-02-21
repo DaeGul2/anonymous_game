@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-     "start": "nodemon src/server.js"
+    "start": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +14,10 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mysql2": "^3.16.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.3"
   },

@@ -38,7 +38,7 @@ async function broadcastRoom(io, roomId) {
       },
       players: players.map((p) => ({
         id: p.id,
-        guest_id: p.guest_id, // ✅ 방장 판별/내 플레이어 찾기용
+        user_id: p.user_id,
         nickname: p.nickname,
         is_ready: p.is_ready,
         is_connected: p.is_connected,
@@ -402,6 +402,21 @@ async function nextQuestionOrEnd(io, roomCode) {
   });
 }
 
+// 방장이 "게임 시작" 버튼을 눌렀을 때 (로비에서 전원 준비 후)
+async function hostStartGame(io, roomCode, hostPlayerId) {
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) throw new Error("방을 찾을 수 없음");
+  if (room.host_player_id !== hostPlayerId) throw new Error("방장만 가능");
+  if (room.phase !== "lobby") throw new Error("로비 상태에서만 시작 가능");
+
+  const players = await Player.findAll({ where: { room_id: room.id } });
+  if (players.length < 1) throw new Error("플레이어가 없음");
+  const allReady = players.every((p) => p.is_ready);
+  if (!allReady) throw new Error("아직 모든 플레이어가 준비되지 않았습니다");
+
+  await startRound(io, roomCode);
+}
+
 async function hostNextRound(io, roomCode, hostPlayerId) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) throw new Error("방을 찾을 수 없음");
@@ -435,6 +450,7 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
 
 module.exports = {
   startRound,
+  hostStartGame,
   submitQuestion,
   endQuestionSubmit,
   submitAnswer,

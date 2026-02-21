@@ -2,188 +2,128 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 
-function nowLabel() {
-  try {
-    return new Date().toLocaleTimeString("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
-
-export default function AnswerInput({
-  canEdit,
-  savedText,
-  submitted,
-  onSave,
-  deadlineExpiredSignal,
-}) {
-  const [editing, setEditing] = useState(!submitted);
+export default function AnswerInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal }) {
   const [draft, setDraft] = useState(savedText || "");
-
-  const [saving, setSaving] = useState(false);
-  const [flashSaved, setFlashSaved] = useState(false);
-  const [lastSavedLabel, setLastSavedLabel] = useState("");
-  const flashTimerRef = useRef(null);
-  const savingTimerRef = useRef(null);
-
-  const triggerSavedFeedback = () => {
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    setFlashSaved(true);
-    setLastSavedLabel(nowLabel());
-    flashTimerRef.current = setTimeout(() => setFlashSaved(false), 1400);
-  };
+  const [editing, setEditing] = useState(!submitted);
+  const [pending, setPending] = useState(false);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
   }, [savedText, editing]);
 
   useEffect(() => {
-    if (submitted || (savedText ?? "") !== "") triggerSavedFeedback();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitted, savedText]);
+    if (!canEdit) setEditing(false);
+  }, [deadlineExpiredSignal, canEdit]);
 
   useEffect(() => {
-    if (!canEdit && editing) {
-      setEditing(false);
-      setDraft(savedText || "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deadlineExpiredSignal]);
+    if (submitted) setEditing(false);
+  }, [submitted]);
 
-  useEffect(() => {
-    return () => {
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-      if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  const statusText = saving
-    ? "저장 중"
-    : flashSaved
-    ? "저장 완료"
-    : submitted
-    ? "저장됨"
-    : "미저장";
-
-  const statusColor = saving
-    ? "primary.main"
-    : flashSaved || submitted
-    ? "success.main"
-    : "text.secondary";
-
-  const handleSave = () => {
-    if (!canEdit || saving) return;
-
-    setSaving(true);
-    try {
-      onSave(draft);
-    } finally {
-      triggerSavedFeedback();
-      if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
-      savingTimerRef.current = setTimeout(() => setSaving(false), 280);
-    }
+  const handleSubmit = () => {
+    if (!canEdit || pending || !draft.trim()) return;
+    setPending(true);
+    onSave(draft.trim());
+    timerRef.current = setTimeout(() => setPending(false), 800);
   };
 
+  const maxChar = 500;
+
+  if (!editing && (submitted || savedText)) {
+    return (
+      <Paper
+        className="glassCard section"
+        sx={{
+          p: 2.4,
+          background: "linear-gradient(135deg, rgba(59,130,246,0.16), rgba(139,92,246,0.08)) !important",
+          border: "1px solid rgba(59,130,246,0.28) !important",
+          animation: "popIn 0.5s var(--spring) both",
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Box
+            sx={{
+              width: 38, height: 38, borderRadius: "50%",
+              background: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flex: "0 0 auto",
+              boxShadow: "0 4px 14px rgba(59,130,246,0.32)",
+              animation: "checkPop 0.6s var(--spring) both 0.1s",
+              opacity: 0, fontSize: 20, color: "#fff", fontWeight: 900,
+            }}
+          >
+            ✓
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#2563EB", mb: 0.4 }}>
+              답변 제출 완료!
+            </Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1.4, wordBreak: "break-word" }}>
+              {savedText || draft}
+            </Typography>
+          </Box>
+        </Stack>
+        {canEdit && (
+          <Button
+            size="small" variant="text"
+            onClick={() => { setEditing(true); setDraft(savedText || draft); }}
+            sx={{ mt: 1.2, color: "var(--text-2)", fontWeight: 700, fontSize: 12 }}
+          >
+            다시 쓰기
+          </Button>
+        )}
+      </Paper>
+    );
+  }
+
   return (
-    <Paper sx={{ p: 2, mt: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle1" fontWeight={800}>
-          내 답변
+    <Paper className="glassCard section" sx={{ p: 2.2, animation: "slideUp 0.4s var(--spring) both" }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+        <Typography sx={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em" }}>
+          💬 내 답변 작성
         </Typography>
-        <Typography variant="body2" sx={{ color: statusColor, fontWeight: 800 }}>
-          {statusText}
+        <Typography sx={{ fontSize: 11, fontWeight: 700, color: draft.length > maxChar ? "var(--c-red)" : "var(--text-3)" }}>
+          {draft.length}/{maxChar}
         </Typography>
       </Stack>
 
-      {!editing ? (
-        <>
-          <Box sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
-            <Typography variant="body1">{savedText || "(작성 내용 없음)"}</Typography>
-          </Box>
+      <TextField
+        fullWidth multiline minRows={3} maxRows={8}
+        placeholder="솔직하게 써봐요... 어차피 익명이에요 😈"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, maxChar))}
+        disabled={!canEdit}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: "var(--radius-lg)",
+            background: "rgba(255,255,255,0.55)",
+            fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em",
+            "& fieldset": { border: "1px solid rgba(59,130,246,0.25)" },
+            "&:hover fieldset": { border: "1px solid rgba(59,130,246,0.45)" },
+            "&.Mui-focused fieldset": { border: "1.5px solid rgba(59,130,246,0.7)" },
+          },
+        }}
+      />
 
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }} alignItems="center">
-            <Button
-              variant="outlined"
-              disabled={!canEdit}
-              onClick={() => {
-                setDraft(savedText || "");
-                setEditing(true);
-              }}
-            >
-              수정
-            </Button>
-
-            {(submitted || lastSavedLabel) && (
-              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                {lastSavedLabel ? `마지막 저장 ${lastSavedLabel}` : "저장됨"}
-              </Typography>
-            )}
-          </Stack>
-
-          {!canEdit && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mt: 1 }}
-            >
-              마감되어 수정할 수 없습니다.
-            </Typography>
-          )}
-        </>
-      ) : (
-        <>
-          <TextField
-            fullWidth
-            label="답변"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            disabled={!canEdit}
-            sx={{ mt: 2 }}
-            multiline
-            minRows={3}
-            maxRows={10}
-          />
-
-          <Stack direction="row" spacing={1} sx={{ mt: 2 }} alignItems="center">
-            <Button
-              variant="contained"
-              disabled={!canEdit || saving}
-              onClick={handleSave}
-            >
-              {saving ? "저장 중" : "저장"}
-            </Button>
-
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setEditing(false);
-                setDraft(savedText || "");
-              }}
-            >
-              취소
-            </Button>
-
-            {(submitted || lastSavedLabel) && (
-              <Typography variant="caption" sx={{ color: statusColor, fontWeight: 800 }}>
-                {lastSavedLabel ? `마지막 저장 ${lastSavedLabel}` : statusText}
-              </Typography>
-            )}
-          </Stack>
-
-          {!canEdit && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mt: 1 }}
-            >
-              마감되어 저장할 수 없습니다. 기존 저장본이 유지됩니다.
-            </Typography>
-          )}
-        </>
-      )}
+      <Box className="inputActions">
+        <Button
+          fullWidth variant="contained"
+          disabled={!canEdit || pending || !draft.trim() || draft.length > maxChar}
+          onClick={handleSubmit}
+          sx={{
+            fontWeight: 900, fontSize: 16, borderRadius: 999, py: 1.5,
+            background: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+            boxShadow: "0 4px 20px rgba(59,130,246,0.32)",
+            "&:active": { transform: "scale(0.97)" },
+            "&:disabled": { opacity: 0.45 },
+            transition: "transform 0.12s ease",
+          }}
+        >
+          {pending ? "저장 중..." : "제출하기 →"}
+        </Button>
+      </Box>
     </Paper>
   );
 }

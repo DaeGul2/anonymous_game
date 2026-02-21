@@ -2,48 +2,136 @@
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
+const session = require("express-session");
+const passport = require("passport");
+const { Strategy: GoogleStrategy } = require("passport-google-oauth20");
 const { Server } = require("socket.io");
 
 const { env } = require("./config/env");
 const { initDb } = require("./config/db");
+const { User } = require("./models");
 const healthRoutes = require("./routes/health");
+const authRoutes = require("./routes/auth");
 const { errorHandler } = require("./middlewares/errorHandler");
 
-// ✅ idle cleanup 관련
 const { touchRoomByCode } = require("./services/cleanupService");
 const { getSocketSession } = require("./store/memoryStore");
+
+// ===== Passport 설정 =====
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      callbackURL: env.GOOGLE_CALLBACK_URL,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const googleId = profile.id;
+        const email = profile.emails?.[0]?.value || "";
+        const displayName = profile.displayName || email;
+        const avatarUrl = profile.photos?.[0]?.value || null;
+
+        let user = await User.findOne({ where: { google_id: googleId } });
+        if (!user) {
+          user = await User.create({ google_id: googleId, email, display_name: displayName, avatar_url: avatarUrl });
+        } else {
+          // 프로필 동기화
+          user.display_name = displayName;
+          user.avatar_url = avatarUrl;
+          await user.save();
+        }
+
+        return done(null, user);
+      } catch (e) {
+        return done(e, null);
+      }
+    }
+  )
+);
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findByPk(id);
+    done(null, user || false);
+  } catch (e) {
+    done(e, null);
+  }
+});
 
 async function main() {
   const app = express();
 
-  // 친구들끼리 쓸 거라며? 그럼 다 열어. (나중에 울지 말고)
-  app.use(cors());
+  // CORS: 클라이언트 origin만 허용 + credentials
+  app.use(
+    cors({
+      origin: env.CLIENT_URL,
+      credentials: true,
+    })
+  );
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+  // ===== 세션 =====
+  const sessionMiddleware = session({
+    secret: env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,       // localhost는 false, 프로덕션에서 true로
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30일 (로그아웃 안 하면 유지)
+    },
+  });
+
+  app.use(sessionMiddleware);
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // ===== 라우트 =====
   app.use("/health", healthRoutes);
+  app.use("/auth", authRoutes);
+
+  // 현재 유저의 활성 방 조회 (홈화면 자동 복귀용)
+  app.get("/room/my-active", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).json({ ok: false });
+      const { getMyActiveRoom } = require("./services/roomService");
+      const result = await getMyActiveRoom(req.user.id);
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      res.json({ ok: true, room: null });
+    }
+  });
 
   app.use((req, res) => {
     res.status(404).json({ ok: false, message: "Not Found" });
   });
-
   app.use(errorHandler);
 
   const server = http.createServer(app);
 
+  // ===== Socket.io =====
   const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] },
+    cors: { origin: env.CLIENT_URL, credentials: true },
   });
 
-  // ✅ 모든 socket 이벤트가 오면(=행동) 해당 room last_activity_at 갱신
-  // - socket session에 roomCode가 들어간 뒤부터 유효
-  io.use(async (socket, next) => {
-    // socket.id는 connection 이후 생성되므로, 여기서는 session 접근이 아직 없을 수도 있음
+  // Socket.io에 express-session 공유
+  io.use((socket, next) => {
+    sessionMiddleware(socket.request, socket.request.res || {}, next);
+  });
+
+  // 미인증 소켓 차단
+  io.use((socket, next) => {
+    const user = socket.request.session?.passport?.user;
+    if (!user) return next(new Error("UNAUTHORIZED"));
     next();
   });
 
+  // packet 미들웨어: room last_activity_at 갱신
   io.on("connection", (socket) => {
-    // packet 단위 미들웨어: 실제 이벤트마다 실행됨
     socket.use(async (packet, next) => {
       try {
         const sess = getSocketSession(socket.id);
@@ -53,16 +141,12 @@ async function main() {
     });
   });
 
-  // sockets & jobs
   const { registerSockets } = require("./sockets");
   const { startCleanupJob } = require("./jobs/cleanup.job");
 
   registerSockets(io);
 
-  // DB 먼저 붙고 job 돌리는 게 깔끔함 (Room 쿼리 쓰니까)
   await initDb();
-
-  // ✅ 10분 idle 방 자동 삭제 job 시작
   startCleanupJob(io);
 
   server.listen(env.PORT, () => {

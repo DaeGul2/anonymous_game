@@ -1,68 +1,105 @@
 // src/components/TimerBar.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { formatMMSS, msLeft } from "../utils/time";
 
 export default function TimerBar({ deadlineAt, totalSeconds }) {
-  const totalMs = useMemo(
-    () => Math.max(1, (totalSeconds || 1) * 1000),
-    [totalSeconds]
-  );
+  const totalMs = useMemo(() => Math.max(1, (totalSeconds || 1) * 1000), [totalSeconds]);
   const [left, setLeft] = useState(() => msLeft(deadlineAt));
+  const wrapRef = useRef(null);
+  const prevDangerRef = useRef(false);
 
   useEffect(() => {
-    const id = setInterval(() => setLeft(msLeft(deadlineAt)), 250);
+    const id = setInterval(() => setLeft(msLeft(deadlineAt)), 200);
     return () => clearInterval(id);
   }, [deadlineAt]);
 
-  const pct = Math.max(0, Math.min(100, (left / totalMs) * 100));
-  const danger = left <= 10_000;
+  const pct       = Math.max(0, Math.min(100, (left / totalMs) * 100));
+  const isDanger  = left <= 10_000;
+  const isWarning = left <= 30_000 && !isDanger;
+
+  // 10초 진입 시 한 번만 shake 트리거
+  useEffect(() => {
+    if (isDanger && !prevDangerRef.current && wrapRef.current) {
+      wrapRef.current.style.animation = "none";
+      void wrapRef.current.offsetHeight; // reflow
+      wrapRef.current.style.animation = "shake 0.55s ease";
+    }
+    prevDangerRef.current = isDanger;
+  }, [isDanger]);
+
+  const barColor = isDanger
+    ? "linear-gradient(90deg, #EF4444, #F97316, #EF4444)"
+    : isWarning
+    ? "linear-gradient(90deg, #F59E0B, #EF4444)"
+    : "linear-gradient(90deg, #7C3AED, #EC4899, #3B82F6)";
+
+  const timeColor = isDanger ? "#EF4444" : isWarning ? "#D97706" : "var(--text-1)";
 
   return (
-    <Box sx={{ mt: 1.3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.8 }}>
-        <Typography className="subtle" sx={{ fontSize: 12 }}>
+    <Box sx={{ mt: 1.5 }} ref={wrapRef}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
           남은 시간
         </Typography>
-        <Typography
-          sx={{
-            fontWeight: 950,
-            letterSpacing: "-0.02em",
-            fontVariantNumeric: "tabular-nums",
-            color: danger ? "error.main" : "text.primary",
-          }}
-        >
-          {formatMMSS(left)}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+          {isDanger && (
+            <Box sx={{
+              width: 8, height: 8, borderRadius: "50%", background: "#EF4444",
+              animation: "pulseBeat 0.65s ease-in-out infinite",
+            }} />
+          )}
+          <Typography
+            sx={{
+              fontWeight: 900,
+              fontSize: 20,
+              letterSpacing: "-0.04em",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
+              color: timeColor,
+              transition: "color 0.4s ease",
+              ...(isDanger && { animation: "pulseBeat 0.65s ease-in-out infinite" }),
+            }}
+          >
+            {formatMMSS(left)}
+          </Typography>
+        </Box>
       </Box>
 
       <Box
         sx={{
-          height: 12,
+          height: 10,
           borderRadius: 999,
           overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.65)",
-          background: "rgba(255,255,255,0.45)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
+          background: "rgba(0,0,0,0.08)",
+          position: "relative",
         }}
       >
         <Box
           sx={{
+            position: "absolute",
+            left: 0, top: 0, bottom: 0,
             width: `${pct}%`,
-            height: "100%",
             borderRadius: 999,
-            background: danger
-              ? "linear-gradient(135deg, rgba(239,68,68,0.9), rgba(245,158,11,0.9))"
-              : "linear-gradient(135deg, rgba(236,72,153,0.85), rgba(139,92,246,0.85))",
-            transition: "width 200ms linear",
+            background: barColor,
+            backgroundSize: "200% 100%",
+            transition: "width 0.22s linear, background 0.5s ease",
+            ...(isDanger && { animation: "bgShift 1.2s linear infinite" }),
           }}
         />
       </Box>
 
-      <Typography className="subtle" sx={{ fontSize: 11, mt: 0.6 }}>
-        시간 기준: 서버
-      </Typography>
+      {isDanger && (
+        <Typography
+          sx={{
+            fontSize: 11, fontWeight: 800, color: "#EF4444",
+            mt: 0.7, textAlign: "center", letterSpacing: "0.06em",
+            animation: "pulseBeat 0.65s ease-in-out infinite",
+          }}
+        >
+          ⚡ 마감 임박!
+        </Typography>
+      )}
     </Box>
   );
 }

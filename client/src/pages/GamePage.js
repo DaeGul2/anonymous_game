@@ -1,14 +1,6 @@
 // src/pages/GamePage.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import TimerBar from "../components/TimerBar";
 import AnonymousReveal from "../components/AnonymousReveal";
@@ -21,44 +13,45 @@ function isExpired(deadlineIso) {
   return Date.now() > new Date(deadlineIso).getTime();
 }
 
-/** ===== localStorage helpers ===== */
 function lsGet(key) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 function lsSet(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 function lsDel(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch {}
+  try { localStorage.removeItem(key); } catch {}
 }
 
 function keyQuestion({ code, roundNo }) {
   return `ag:${code}:r${roundNo}:question`;
 }
-function keyAnswer({ code, roundNo, qid, guestId }) {
-  return `ag:${code}:r${roundNo}:q${qid}:a:${guestId}`;
+function keyAnswer({ code, roundNo, qid, userId }) {
+  return `ag:${code}:r${roundNo}:q${qid}:a:${userId}`;
 }
 
 function phaseLabel(p) {
   if (p === "question_submit") return "질문 작성";
-  if (p === "ask") return "답변 작성";
-  if (p === "reveal") return "공개";
-  if (p === "round_end") return "라운드 종료";
-  if (p === "lobby") return "로비";
+  if (p === "ask")             return "답변 작성";
+  if (p === "reveal")          return "공개 중";
+  if (p === "round_end")       return "라운드 종료";
+  if (p === "lobby")           return "로비";
   return p || "-";
 }
 
-/** ====== pretty overlay ====== */
+function phaseEmoji(p) {
+  if (p === "question_submit") return "✏️";
+  if (p === "ask")             return "💬";
+  if (p === "reveal")          return "🎭";
+  if (p === "round_end")       return "🎉";
+  return "🎮";
+}
+
+/** ===== 극적인 카운트다운 오버레이 ===== */
 function StageOverlay({ open, titleTop, count, bottomText, announceText }) {
   if (!open) return null;
 
@@ -69,112 +62,152 @@ function StageOverlay({ open, titleTop, count, bottomText, announceText }) {
       sx={{
         position: "fixed",
         inset: 0,
-        zIndex: 2200, // header(1100) above
+        zIndex: 2200,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: 2,
-        py: 2,
+        px: 3,
         background:
-          "radial-gradient(1200px 600px at 50% 20%, rgba(255,255,255,0.30), rgba(0,0,0,0.55))",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
+          "radial-gradient(ellipse 160% 100% at 50% 70%, rgba(76,0,153,0.72), rgba(0,0,0,0.94))",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        animation: "fadeIn 0.25s ease both",
       }}
     >
       <Box
         sx={{
           width: "100%",
-          maxWidth: 520,
-          borderRadius: 6,
-          border: "1px solid rgba(255,255,255,0.35)",
-          background:
-            "linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.65))",
-          boxShadow: "0 30px 90px rgba(0,0,0,0.35)",
-          overflow: "hidden",
+          maxWidth: 360,
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 3,
         }}
       >
+        {/* 타이틀 배지 */}
         <Box
           sx={{
-            p: 2,
-            pt: 2.2,
-            pb: 1.4,
-            textAlign: "center",
-            background:
-              "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(139,92,246,0.18))",
-            borderBottom: "1px solid rgba(255,255,255,0.45)",
+            px: 3,
+            py: 0.9,
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.10)",
+            border: "1px solid rgba(255,255,255,0.20)",
+            backdropFilter: "blur(12px)",
+            animation: "slideUp 0.4s var(--spring) both",
           }}
         >
           <Typography
             sx={{
-              fontWeight: 950,
-              letterSpacing: "-0.03em",
-              fontSize: { xs: 16, sm: 17 },
-              color: "rgba(17,24,39,0.90)",
+              fontWeight: 900,
+              fontSize: 14,
+              color: "rgba(255,255,255,0.90)",
+              letterSpacing: "-0.01em",
             }}
           >
             {titleTop}
           </Typography>
         </Box>
 
-        <Box sx={{ p: 2.3, textAlign: "center" }}>
-          {isAnnounce ? (
+        {/* 카운트 또는 공개 텍스트 */}
+        {isAnnounce ? (
+          <Box sx={{ animation: "popIn 0.55s var(--spring) both" }}>
             <Typography
               sx={{
                 fontWeight: 950,
-                letterSpacing: "-0.03em",
-                fontSize: { xs: 24, sm: 28 },
+                fontSize: { xs: 38, sm: 46 },
+                letterSpacing: "-0.04em",
                 lineHeight: 1.15,
-                color: "rgba(17,24,39,0.92)",
+                background: "linear-gradient(135deg, #F9A8D4 0%, #C4B5FD 50%, #93C5FD 100%)",
+                backgroundSize: "200% 200%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 0 28px rgba(196,181,253,0.65))",
+                animation: "bgShift 3s ease infinite",
               }}
             >
               {announceText}
             </Typography>
-          ) : (
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 240,
+              height: 200,
+            }}
+          >
+            {/* 글로우 링 */}
+            <Box
+              sx={{
+                position: "absolute",
+                width: 220,
+                height: 220,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(167,139,250,0.30) 0%, transparent 68%)",
+                animation: "glowPulse 1.1s ease-in-out infinite",
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                width: 140,
+                height: 140,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(244,114,182,0.22) 0%, transparent 65%)",
+                animation: "glowPulse 1.1s ease-in-out infinite 0.55s",
+              }}
+            />
+            {/* 숫자 */}
             <Typography
+              key={count}
               sx={{
                 fontWeight: 1000,
-                letterSpacing: "-0.06em",
-                fontSize: { xs: 84, sm: 96 },
+                fontSize: { xs: 136, sm: 160 },
+                letterSpacing: "-0.08em",
                 lineHeight: 1,
-                color: "rgba(17,24,39,0.92)",
-                textShadow: "0 10px 35px rgba(0,0,0,0.18)",
+                background:
+                  "linear-gradient(180deg, #fff 0%, #C4B5FD 35%, #F472B6 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                animation: "numberPop 0.95s ease both",
+                filter: "drop-shadow(0 0 48px rgba(196,181,253,0.75))",
               }}
             >
               {count}
             </Typography>
-          )}
+          </Box>
+        )}
 
-          {!isAnnounce && (
-            <Typography
-              sx={{
-                mt: 1.2,
-                fontWeight: 900,
-                fontSize: { xs: 14, sm: 15 },
-                color: "rgba(17,24,39,0.72)",
-              }}
-            >
-              {bottomText}
-            </Typography>
-          )}
-        </Box>
-
-        <Box
-          sx={{
-            px: 2,
-            pb: 2.2,
-            textAlign: "center",
-          }}
-        >
+        {!isAnnounce && (
           <Typography
             sx={{
               fontWeight: 800,
-              fontSize: 12,
-              color: "rgba(17,24,39,0.55)",
+              fontSize: 16,
+              color: "rgba(255,255,255,0.52)",
+              letterSpacing: "0.01em",
+              animation: "fadeIn 0.5s ease 0.3s both",
             }}
           >
-            (집중 안 하면 인생도 똑같이 흘러갑니다)
+            {bottomText}
           </Typography>
-        </Box>
+        )}
+
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.22)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          집중 안 하면 인생도 똑같이 흘러갑니다
+        </Typography>
       </Box>
     </Box>
   );
@@ -190,7 +223,7 @@ export default function GamePage() {
     roomLeave,
     state,
     game,
-    guest_id,
+    user,
     gameSubmitQuestion,
     gameSubmitAnswer,
     hostRevealNext,
@@ -199,9 +232,7 @@ export default function GamePage() {
     error,
   } = useRoomStore();
 
-  useEffect(() => {
-    initSocket();
-  }, [initSocket]);
+  useEffect(() => { initSocket(); }, [initSocket]);
 
   useEffect(() => {
     if (!code) return;
@@ -209,15 +240,13 @@ export default function GamePage() {
   }, [code, roomRejoin]);
 
   useEffect(() => {
-    if (state?.room?.phase === "lobby") {
-      nav(`/room/${state.room.code}`);
-    }
+    if (state?.room?.phase === "lobby") nav(`/room/${state.room.code}`);
   }, [state, nav]);
 
   const myPlayer = useMemo(() => {
     const players = state?.players || [];
-    return players.find((p) => p.guest_id === guest_id) || null;
-  }, [state, guest_id]);
+    return players.find((p) => p.user_id === user?.id) || null;
+  }, [state, user]);
 
   const isHost =
     state?.room?.host_player_id && myPlayer?.id === state.room.host_player_id;
@@ -235,11 +264,7 @@ export default function GamePage() {
   const wasExpiredRef = useRef(false);
 
   useEffect(() => {
-    if (!deadlineAt) {
-      wasExpiredRef.current = false;
-      return;
-    }
-
+    if (!deadlineAt) { wasExpiredRef.current = false; return; }
     const tick = () => {
       const exp = isExpired(deadlineAt);
       if (exp && !wasExpiredRef.current) {
@@ -248,7 +273,6 @@ export default function GamePage() {
       }
       if (!exp) wasExpiredRef.current = false;
     };
-
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
@@ -261,7 +285,6 @@ export default function GamePage() {
 
   const roundNo = state?.room?.current_round_no || game.round_no || 0;
 
-  /** ====== 질문/답변 local persistence ====== */
   const qKey = useMemo(
     () => keyQuestion({ code: code?.toUpperCase(), roundNo }),
     [code, roundNo]
@@ -280,9 +303,7 @@ export default function GamePage() {
   }, [game.question_submitted, qLocal]);
 
   useEffect(() => {
-    if (game.question_submitted && qLocal?.text) {
-      lsDel(qKey);
-    }
+    if (game.question_submitted && qLocal?.text) lsDel(qKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.question_submitted]);
 
@@ -290,22 +311,14 @@ export default function GamePage() {
   const aKey = useMemo(
     () =>
       currentQid
-        ? keyAnswer({
-            code: code?.toUpperCase(),
-            roundNo,
-            qid: currentQid,
-            guestId: guest_id,
-          })
+        ? keyAnswer({ code: code?.toUpperCase(), roundNo, qid: currentQid, userId: user?.id })
         : "",
-    [code, roundNo, currentQid, guest_id]
+    [code, roundNo, currentQid, user?.id]
   );
   const aLocal = useMemo(() => (aKey ? lsGet(aKey) : null), [aKey]);
 
-  const myAnswerSubmitted = !!(
-    currentQid && game.answer_submitted_by_qid[currentQid]
-  );
-  const myAnswerSavedText =
-    (currentQid && game.answer_saved_text_by_qid[currentQid]) || "";
+  const myAnswerSubmitted = !!(currentQid && game.answer_submitted_by_qid[currentQid]);
+  const myAnswerSavedText = (currentQid && game.answer_saved_text_by_qid[currentQid]) || "";
 
   const answerSavedTextDisplay = useMemo(() => {
     if (String(myAnswerSavedText || "").trim()) return myAnswerSavedText;
@@ -334,18 +347,18 @@ export default function GamePage() {
     gameSubmitAnswer(text);
   };
 
-  /** ====== overlay control (ask/reveal entry) ====== */
+  /** ===== overlay control ===== */
   const timeoutsRef = useRef([]);
-  const seenOnceRef = useRef(false);
-  const lastAskQidRef = useRef("");
-  const lastRevealQidRef = useRef("");
+  // 마운트 시점의 qid로 초기화 → 재접속/새로고침 시 이미 진행 중인 단계의 오버레이를 스킵
+  const lastSeenAskQidRef = useRef(
+    phase === "ask" ? (game.current_question?.id || "") : ""
+  );
+  const lastSeenRevealQidRef = useRef(
+    phase === "reveal" ? (game.reveal?.question?.id || "") : ""
+  );
 
   const [overlay, setOverlay] = useState({
-    open: false,
-    titleTop: "",
-    bottomText: "",
-    count: null,
-    announceText: "",
+    open: false, titleTop: "", bottomText: "", count: null, announceText: "",
   });
 
   const clearAllTimers = () => {
@@ -355,88 +368,40 @@ export default function GamePage() {
 
   const runOverlaySequence = ({ titleTop, announceText }) => {
     clearAllTimers();
-
-    // countdown 3 -> 2 -> 1
-    setOverlay({
-      open: true,
-      titleTop,
-      bottomText: "초 후 공개!",
-      count: 3,
-      announceText,
-    });
-
+    setOverlay({ open: true, titleTop, bottomText: "초 후 공개!", count: 3, announceText });
     const t1 = setTimeout(() => setOverlay((o) => ({ ...o, count: 2 })), 1000);
     const t2 = setTimeout(() => setOverlay((o) => ({ ...o, count: 1 })), 2000);
-
-    // announce
-    const t3 = setTimeout(() => {
-      setOverlay((o) => ({
-        ...o,
-        count: null,
-      }));
-    }, 3000);
-
-    // hide
-    const t4 = setTimeout(() => {
-      setOverlay((o) => ({ ...o, open: false }));
-    }, 3800);
-
+    const t3 = setTimeout(() => setOverlay((o) => ({ ...o, count: null })), 3000);
+    const t4 = setTimeout(() => setOverlay((o) => ({ ...o, open: false })), 3900);
     timeoutsRef.current = [t1, t2, t3, t4];
   };
 
-  // trigger on ask entry (new question)
+  // ask 진입: 질문 공개 오버레이 (마운트 시 이미 이 qid를 보고 있었으면 스킵)
   useEffect(() => {
     const qid = game.current_question?.id || "";
     if (phase !== "ask" || !qid) return;
-
-    // 첫 로드(재합류/새로고침)에서는 굳이 오버레이 강제하지 않음
-    if (!seenOnceRef.current) {
-      seenOnceRef.current = true;
-      lastAskQidRef.current = qid;
-      return;
-    }
-
-    if (lastAskQidRef.current !== qid) {
-      lastAskQidRef.current = qid;
-      runOverlaySequence({
-        titleTop: "질문이 모두 등록됐습니다!",
-        announceText: "질문을 공개합니다!",
-      });
-    }
+    if (lastSeenAskQidRef.current === qid) return;
+    lastSeenAskQidRef.current = qid;
+    runOverlaySequence({ titleTop: "질문이 모두 등록됐습니다!", announceText: "질문을 공개합니다!" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, game.current_question?.id]);
 
-  // trigger on reveal entry (new reveal question)
+  // reveal 진입: 답변 공개 오버레이 (마운트 시 이미 이 qid를 보고 있었으면 스킵)
   useEffect(() => {
     const rqid = game.reveal?.question?.id || "";
     if (phase !== "reveal" || !rqid) return;
-
-    if (!seenOnceRef.current) {
-      seenOnceRef.current = true;
-      lastRevealQidRef.current = rqid;
-      return;
-    }
-
-    if (lastRevealQidRef.current !== rqid) {
-      lastRevealQidRef.current = rqid;
-      runOverlaySequence({
-        titleTop: "응답이 모두 등록됐습니다!!",
-        announceText: "응답을 공개합니다!",
-      });
-    }
+    if (lastSeenRevealQidRef.current === rqid) return;
+    lastSeenRevealQidRef.current = rqid;
+    runOverlaySequence({ titleTop: "응답이 모두 등록됐습니다!!", announceText: "응답을 공개합니다!" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, game.reveal?.question?.id]);
 
-  useEffect(() => {
-    return () => clearAllTimers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => () => clearAllTimers(), []); // eslint-disable-line
 
   const stickyTop = "calc(var(--header-h) + env(safe-area-inset-top) + 10px)";
 
   return (
     <Box className="appShell">
-      {/* overlay (ask/reveal attention grab) */}
       <StageOverlay
         open={overlay.open}
         titleTop={overlay.titleTop}
@@ -445,36 +410,48 @@ export default function GamePage() {
         announceText={overlay.announceText}
       />
 
-      {/* Header */}
+      {/* 페이지 헤더 */}
       <Box className="pageHeader">
-        <Box style={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0 }}>
           <Typography className="pageTitle">
-            게임 진행{" "}
-            <Typography component="span" className="subtle" sx={{ fontSize: 14 }}>
-              {code ? `(${code.toUpperCase()})` : ""}
+            {phaseEmoji(phase)}{" "}
+            {phaseLabel(phase)}{" "}
+            <Typography component="span" className="subtle" sx={{ fontSize: 13 }}>
+              {code?.toUpperCase()}
             </Typography>
           </Typography>
-          <Typography className="subtle" sx={{ mt: 0.25 }}>
-            라운드 {roundNo} · 진행 단계: {phaseLabel(phase)}
+          <Typography className="subtle" sx={{ mt: 0.3, fontSize: 13 }}>
+            라운드 {roundNo} · {state?.players?.length || 0}명 참여 중
           </Typography>
         </Box>
 
         <Stack direction="row" spacing={1} alignItems="center">
           <Chip
             size="small"
-            label={isHost ? "방장" : "참여자"}
-            sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }}
+            label={isHost ? "👑 방장" : "참여자"}
+            sx={{
+              fontWeight: 900,
+              borderRadius: 999,
+              fontSize: 12,
+              background: isHost
+                ? "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(236,72,153,0.10))"
+                : undefined,
+              border: isHost ? "1px solid rgba(124,58,237,0.25)" : undefined,
+            }}
           />
           <IconButton
-            onClick={() => {
-              roomLeave();
-              nav("/");
-            }}
-            className="tap"
+            onClick={() => { roomLeave(); nav("/"); }}
             sx={{
-              border: "1px solid rgba(255,255,255,0.65)",
-              background: "rgba(255,255,255,0.45)",
+              width: 40,
+              height: 40,
+              border: "1.5px solid rgba(255,255,255,0.65)",
+              background: "rgba(255,255,255,0.52)",
               backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              fontSize: 15,
+              color: "var(--text-2)",
+              fontWeight: 900,
+              "&:active": { transform: "scale(0.92)" },
             }}
           >
             ✕
@@ -483,31 +460,40 @@ export default function GamePage() {
       </Box>
 
       {error && (
-        <Paper className="glassCard section" sx={{ p: 2 }}>
-          <Typography color="error" fontWeight={900}>
-            {error}
+        <Paper
+          className="glassCard section"
+          sx={{ p: 1.8, border: "1px solid rgba(239,68,68,0.35) !important" }}
+        >
+          <Typography sx={{ color: "var(--c-red)", fontWeight: 900, fontSize: 14 }}>
+            ⚠️ {error}
           </Typography>
         </Paper>
       )}
 
-      {/* Top status card */}
-      <Paper className="glassCard section" sx={{ p: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+      {/* 상태 바 */}
+      <Paper className="glassCard section" sx={{ p: 1.8 }}>
+        <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
           <Chip
             size="small"
-            label={`라운드 ${roundNo}`}
-            sx={{ fontWeight: 900, borderRadius: 999 }}
+            label={`R${roundNo}`}
+            sx={{
+              fontWeight: 900,
+              borderRadius: 999,
+              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              color: "#fff",
+              fontSize: 12,
+            }}
           />
           <Chip
             size="small"
             label={phaseLabel(phase)}
-            sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.9 }}
+            sx={{ fontWeight: 900, borderRadius: 999, fontSize: 12 }}
           />
           {state?.players?.length != null && state?.room?.max_players != null && (
             <Chip
               size="small"
-              label={`${state.players.length}/${state.room.max_players}`}
-              sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.85 }}
+              label={`${state.players.length}/${state.room.max_players}명`}
+              sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.8, fontSize: 12 }}
             />
           )}
         </Stack>
@@ -517,16 +503,55 @@ export default function GamePage() {
         )}
       </Paper>
 
-      {/* ===== phase 1: 질문 입력 ===== */}
+      {/* ===== 질문 작성 페이즈 ===== */}
       {phase === "question_submit" && (
         <>
-          <Paper className="glassCard section" sx={{ p: 2 }}>
-            <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-              질문 작성
-            </Typography>
-            <Typography className="subtle" sx={{ fontSize: 12, mt: 0.5 }}>
-              저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
-            </Typography>
+          <Paper
+            className="glassCard section"
+            sx={{
+              p: 2,
+              background:
+                "linear-gradient(135deg, rgba(124,58,237,0.14), rgba(236,72,153,0.07)) !important",
+              border: "1px solid rgba(124,58,237,0.22) !important",
+              animation: "slideUp 0.45s var(--spring) both",
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box
+                sx={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: "16px",
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 24,
+                  boxShadow: "0 6px 20px rgba(124,58,237,0.38)",
+                  flex: "0 0 auto",
+                }}
+              >
+                ✏️
+              </Box>
+              <Box>
+                <Typography
+                  sx={{ fontWeight: 950, fontSize: 16, letterSpacing: "-0.025em" }}
+                >
+                  질문을 써봐요!
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    mt: 0.3,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  어차피 익명이니까, 솔직하게 써봐요 ✨
+                </Typography>
+              </Box>
+            </Stack>
           </Paper>
 
           <QuestionInput
@@ -539,44 +564,50 @@ export default function GamePage() {
         </>
       )}
 
-      {/* ===== ask: 답변 ===== */}
+      {/* ===== 답변 페이즈 ===== */}
       {phase === "ask" && (
         <>
-          {/* sticky question banner: 모바일에서 질문이 "무조건" 보이게 */}
+          {/* 스티키 질문 배너 */}
           <Paper
             className="glassCard section"
             sx={{
-              p: 1.8,
+              p: 2,
               position: "sticky",
               top: stickyTop,
               zIndex: 60,
-              borderRadius: 6,
               background:
-                "linear-gradient(135deg, rgba(236,72,153,0.22), rgba(139,92,246,0.22))",
-              border: "1px solid rgba(255,255,255,0.70)",
-              boxShadow: "0 18px 50px rgba(0,0,0,0.10)",
+                "linear-gradient(135deg, rgba(236,72,153,0.22), rgba(139,92,246,0.20)) !important",
+              border: "1px solid rgba(255,255,255,0.80) !important",
+              boxShadow:
+                "0 12px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(124,58,237,0.10) !important",
+              animation: "slideUp 0.4s var(--spring) both",
             }}
           >
             <Stack spacing={1}>
               <Stack direction="row" spacing={1} alignItems="center">
-                <Chip
-                  label="Q"
-                  size="small"
+                <Box
                   sx={{
-                    fontWeight: 950,
+                    px: 1.4,
+                    py: 0.3,
                     borderRadius: 999,
-                    bgcolor: "rgba(17,24,39,0.88)",
-                    color: "white",
-                  }}
-                />
-                <Typography
-                  sx={{
+                    background: "rgba(17,24,39,0.85)",
+                    color: "#fff",
+                    fontSize: 12,
                     fontWeight: 950,
-                    letterSpacing: "-0.02em",
-                    color: "rgba(17,24,39,0.82)",
+                    letterSpacing: "-0.01em",
                   }}
                 >
-                  현재 질문
+                  Q
+                </Box>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "rgba(17,24,39,0.60)",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  지금 질문
                 </Typography>
               </Stack>
 
@@ -585,16 +616,12 @@ export default function GamePage() {
                   fontWeight: 1000,
                   letterSpacing: "-0.03em",
                   fontSize: { xs: 19, sm: 22 },
-                  lineHeight: 1.22,
+                  lineHeight: 1.28,
                   color: "rgba(17,24,39,0.92)",
                   wordBreak: "keep-all",
                 }}
               >
-                {game.current_question?.text || "질문을 불러오는 중입니다."}
-              </Typography>
-
-              <Typography className="subtle" sx={{ fontSize: 12 }}>
-                저장 시 임시 저장되며, 새로고침 후에도 이어서 작성할 수 있습니다.
+                {game.current_question?.text || "질문을 불러오는 중..."}
               </Typography>
             </Stack>
           </Paper>
@@ -609,76 +636,177 @@ export default function GamePage() {
         </>
       )}
 
-      {/* ===== reveal ===== */}
+      {/* ===== 공개 페이즈 ===== */}
       {phase === "reveal" && (
         <>
           <AnonymousReveal
+            key={game.reveal?.question?.id}
             question={game.reveal?.question}
             answers={game.reveal?.answers}
           />
 
           <Paper className="glassCard section" sx={{ p: 2 }}>
             {isHost ? (
-              <Stack direction="row" spacing={1}>
-                <Button
-                  variant="contained"
-                  className="tap grow"
-                  onClick={hostRevealNext}
-                >
-                  {game.reveal?.is_last ? "라운드 종료" : "다음 질문"}
-                </Button>
-              </Stack>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={hostRevealNext}
+                sx={{
+                  fontWeight: 900,
+                  fontSize: 17,
+                  borderRadius: 999,
+                  py: 1.8,
+                  letterSpacing: "-0.02em",
+                  background: game.reveal?.is_last
+                    ? "linear-gradient(135deg, #10B981, #34D399)"
+                    : "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  boxShadow: game.reveal?.is_last
+                    ? "0 8px 28px rgba(16,185,129,0.42)"
+                    : "0 8px 28px rgba(124,58,237,0.40)",
+                  "&:active": { transform: "scale(0.97)" },
+                  transition: "transform 0.12s ease",
+                  animation: "popIn 0.5s var(--spring) both",
+                }}
+              >
+                {game.reveal?.is_last ? "🎉 라운드 종료" : "다음 질문 →"}
+              </Button>
             ) : (
-              <Typography className="subtle" sx={{ fontSize: 12 }}>
-                진행을 기다리는 중입니다.
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={1.5}
+                alignItems="center"
+                justifyContent="center"
+                sx={{ py: 1 }}
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "var(--c-amber)",
+                    animation: "pulseBeat 1.4s ease-in-out infinite",
+                  }}
+                />
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}
+                >
+                  방장이 다음 단계를 진행 중...
+                </Typography>
+              </Stack>
             )}
           </Paper>
         </>
       )}
 
-      {/* ===== round_end ===== */}
+      {/* ===== 라운드 종료 페이즈 ===== */}
       {phase === "round_end" && (
-        <Paper className="glassCard section" sx={{ p: 2 }}>
-          <Typography fontWeight={950} sx={{ letterSpacing: "-0.02em" }}>
-            라운드 종료
+        <Paper
+          className="glassCard section"
+          sx={{
+            p: 2.8,
+            background:
+              "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(236,72,153,0.07)) !important",
+            border: "1px solid rgba(124,58,237,0.20) !important",
+            textAlign: "center",
+            animation: "slideUp 0.5s var(--spring) both",
+          }}
+        >
+          <Typography
+            sx={{ fontSize: 52, mb: 1, animation: "popIn 0.6s var(--spring) both" }}
+          >
+            🎉
           </Typography>
-          <Typography className="subtle" sx={{ fontSize: 12, mt: 0.5, mb: 1.5 }}>
-            다음 라운드를 시작하거나 게임을 종료할 수 있습니다.
+          <Typography
+            sx={{
+              fontWeight: 950,
+              fontSize: 22,
+              letterSpacing: "-0.03em",
+              mb: 0.6,
+              animation: "slideUp 0.5s var(--spring) both 0.1s",
+            }}
+          >
+            라운드 {roundNo} 완료!
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-2)",
+              mb: 2.5,
+              animation: "fadeIn 0.5s ease both 0.2s",
+            }}
+          >
+            {isHost
+              ? "계속 즐기거나 방을 정리해요."
+              : "방장이 결정하는 중입니다..."}
           </Typography>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Stack spacing={1.2}>
             <Button
               variant="contained"
-              className="tap grow"
+              fullWidth
               disabled={!isHost}
               onClick={hostNextRound}
+              sx={{
+                fontWeight: 900,
+                fontSize: 16,
+                borderRadius: 999,
+                py: 1.7,
+                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                boxShadow: "0 8px 28px rgba(124,58,237,0.38)",
+                "&:active": { transform: "scale(0.97)" },
+                "&:disabled": { opacity: 0.45 },
+                transition: "transform 0.12s ease",
+                letterSpacing: "-0.02em",
+              }}
             >
-              다음 라운드
+              🔥 다음 라운드
             </Button>
             <Button
               variant="outlined"
-              color="error"
-              className="tap grow"
+              fullWidth
               disabled={!isHost}
               onClick={hostEndGame}
+              sx={{
+                fontWeight: 900,
+                fontSize: 16,
+                borderRadius: 999,
+                py: 1.5,
+                borderColor: "rgba(239,68,68,0.40)",
+                color: "var(--c-red)",
+                "&:hover": {
+                  borderColor: "rgba(239,68,68,0.60)",
+                  background: "rgba(239,68,68,0.06)",
+                },
+                "&:disabled": { opacity: 0.45 },
+                letterSpacing: "-0.02em",
+              }}
             >
               게임 종료
             </Button>
           </Stack>
 
           {!isHost && (
-            <Typography className="subtle" sx={{ fontSize: 12, mt: 1 }}>
-              방장만 진행할 수 있습니다.
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-3)",
+                mt: 1.8,
+              }}
+            >
+              방장만 진행할 수 있습니다
             </Typography>
           )}
         </Paper>
       )}
 
       {!phase && (
-        <Paper className="glassCard section" sx={{ p: 2 }}>
-          <Typography className="subtle">
-            진행 상태를 불러오지 못했습니다.
+        <Paper className="glassCard section" sx={{ p: 2.5, textAlign: "center" }}>
+          <Typography
+            sx={{ color: "var(--text-2)", fontWeight: 700, fontSize: 14 }}
+          >
+            게임 상태를 불러오는 중...
           </Typography>
         </Paper>
       )}

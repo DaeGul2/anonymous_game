@@ -18,6 +18,8 @@ export const EVENTS = {
   ROOM_UPDATE: "room:update",
   ROOM_DESTROYED: "room:destroyed",
 
+  GAME_START: "game:start",
+  GAME_START_RES: "game:start:res",
   GAME_PHASE: "game:phase",
   GAME_SUBMIT_Q: "game:submitQuestion",
   GAME_SUBMIT_Q_RES: "game:submitQuestion:res",
