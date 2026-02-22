@@ -38,4 +38,7 @@ export const EVENTS = {
   GAME_HOST_END: "game:hostEndGame",
   GAME_HOST_END_RES: "game:hostEndGame:res",
   GAME_ENDED: "game:ended",
+
+  GAME_HEART_Q: "game:heartQuestion",
+  GAME_HEART_Q_UPDATE: "game:heartQuestion:update",
 };

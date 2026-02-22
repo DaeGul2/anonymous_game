@@ -1,12 +1,14 @@
 // src/components/QuestionInput.js
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { QUESTION_TEMPLATES } from "../constants/questionTemplates";
 
 export default function QuestionInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal }) {
   const [draft, setDraft] = useState(savedText || "");
   const [editing, setEditing] = useState(!submitted);
   const [pending, setPending] = useState(false);
   const timerRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
@@ -80,7 +82,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, d
 
   return (
     <Paper className="glassCard section" sx={{ p: 2.2, animation: "slideUp 0.4s var(--spring) both" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
         <Typography sx={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em" }}>
           ✏️ 내 질문 작성
         </Typography>
@@ -89,12 +91,63 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, d
         </Typography>
       </Stack>
 
+      {/* 템플릿 칩 */}
+      {canEdit && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", mb: 0.8 }}>
+            💡 템플릿으로 시작하기
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.8,
+              overflowX: "auto",
+              pb: 0.5,
+              "&::-webkit-scrollbar": { display: "none" },
+              scrollbarWidth: "none",
+            }}
+          >
+            {QUESTION_TEMPLATES.map((t, i) => (
+              <Box
+                key={i}
+                onClick={() => {
+                  setDraft(t);
+                  setTimeout(() => textareaRef.current?.focus(), 50);
+                }}
+                sx={{
+                  flex: "0 0 auto",
+                  px: 1.4,
+                  py: 0.7,
+                  borderRadius: 999,
+                  background: "rgba(124,58,237,0.07)",
+                  border: "1px solid rgba(124,58,237,0.18)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  color: "var(--c-primary)",
+                  userSelect: "none",
+                  transition: "all 0.15s ease",
+                  "&:active": {
+                    background: "rgba(124,58,237,0.18)",
+                    transform: "scale(0.95)",
+                  },
+                }}
+              >
+                {t}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
       <TextField
         fullWidth multiline minRows={3} maxRows={8}
         placeholder="여기에 질문을 적어보세요 🤔"
         value={draft}
         onChange={(e) => setDraft(e.target.value.slice(0, maxChar))}
         disabled={!canEdit}
+        inputRef={textareaRef}
         sx={{
           "& .MuiOutlinedInput-root": {
             borderRadius: "var(--radius-lg)",

@@ -108,6 +108,11 @@
   100% { transform: translate(0,   0)   scale(1); }
 }
 
+@keyframes urgentScale {
+  0%, 100% { transform: scale(1); }
+  45%       { transform: scale(1.016); }
+}
+
 @keyframes bgShift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }

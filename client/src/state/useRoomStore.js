@@ -31,6 +31,8 @@ export const useRoomStore = create((set, get) => ({
     answer_saved_text_by_qid: {},
     answer_saved_at_by_qid: {},
     answer_pending_text_by_qid: {},
+
+    hearts_by_qid: {},  // { [qid]: { count: number, hearted: boolean } }
   },
 
   error: "",
@@ -167,6 +169,7 @@ export const useRoomStore = create((set, get) => ({
               answer_saved_text_by_qid: {},
               answer_saved_at_by_qid: {},
               answer_pending_text_by_qid: {},
+              hearts_by_qid: {},
               current_question: null,
               reveal: null,
               round_end: null,
@@ -252,6 +255,25 @@ export const useRoomStore = create((set, get) => ({
       if (!res?.ok) set({ error: res?.message || "다음 진행 실패" });
     });
 
+    // ====== 질문 하트 실시간 업데이트 ======
+    s.on(EVENTS.GAME_HEART_Q_UPDATE, (p) => {
+      if (!p?.ok) return;
+      const myPlayer = get().state?.players?.find((pl) => pl.user_id === get().user?.id);
+      const myPlayerId = myPlayer?.id;
+      set((st) => ({
+        game: {
+          ...st.game,
+          hearts_by_qid: {
+            ...st.game.hearts_by_qid,
+            [p.question_id]: {
+              count: p.count,
+              hearted: myPlayerId ? (p.hearted_by || []).includes(myPlayerId) : false,
+            },
+          },
+        },
+      }));
+    });
+
     s.on("disconnect", () => set({ socketReady: false }));
 
     set({ socketReady: true });
@@ -316,6 +338,10 @@ export const useRoomStore = create((set, get) => ({
     }
 
     connectSocket().emit(EVENTS.GAME_SUBMIT_A, { text: t });
+  },
+
+  gameHeartQuestion: (question_id) => {
+    connectSocket().emit(EVENTS.GAME_HEART_Q, { question_id });
   },
 
   gameStart: () => connectSocket().emit(EVENTS.GAME_START),

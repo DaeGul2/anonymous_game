@@ -13,6 +13,11 @@ function isExpired(deadlineIso) {
   return Date.now() > new Date(deadlineIso).getTime();
 }
 
+function msLeft(deadlineIso) {
+  if (!deadlineIso) return Infinity;
+  return Math.max(0, new Date(deadlineIso).getTime() - Date.now());
+}
+
 function lsGet(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -226,6 +231,7 @@ export default function GamePage() {
     user,
     gameSubmitQuestion,
     gameSubmitAnswer,
+    gameHeartQuestion,
     hostRevealNext,
     hostNextRound,
     hostEndGame,
@@ -261,12 +267,18 @@ export default function GamePage() {
   }, [phase]);
 
   const [deadlineExpiredSignal, setDeadlineExpiredSignal] = useState(0);
+  const [timeLeftMs, setTimeLeftMs] = useState(Infinity);
   const wasExpiredRef = useRef(false);
 
   useEffect(() => {
-    if (!deadlineAt) { wasExpiredRef.current = false; return; }
+    if (!deadlineAt) {
+      wasExpiredRef.current = false;
+      setTimeLeftMs(Infinity);
+      return;
+    }
     const tick = () => {
       const exp = isExpired(deadlineAt);
+      setTimeLeftMs(msLeft(deadlineAt));
       if (exp && !wasExpiredRef.current) {
         wasExpiredRef.current = true;
         setDeadlineExpiredSignal((x) => x + 1);
@@ -274,9 +286,12 @@ export default function GamePage() {
       if (!exp) wasExpiredRef.current = false;
     };
     tick();
-    const id = setInterval(tick, 200);
+    const id = setInterval(tick, 300);
     return () => clearInterval(id);
   }, [deadlineAt]);
+
+  const isUrgent = timeLeftMs > 0 && timeLeftMs <= 15_000 &&
+    (phase === "question_submit" || phase === "ask");
 
   const canEditNow = useMemo(() => {
     if (phase !== "question_submit" && phase !== "ask") return false;
@@ -307,7 +322,6 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.question_submitted]);
 
-  const currentQid = game.current_question?.id || "";
   const aKey = useMemo(
     () =>
       currentQid
@@ -400,8 +414,15 @@ export default function GamePage() {
 
   const stickyTop = "calc(var(--header-h) + env(safe-area-inset-top) + 10px)";
 
+  // 현재 질문 하트 정보
+  const currentQid = game.current_question?.id || "";
+  const heartInfo = game.hearts_by_qid?.[currentQid] || { count: 0, hearted: false };
+
   return (
-    <Box className="appShell">
+    <Box
+      className="appShell"
+      sx={isUrgent ? { animation: "urgentScale 0.75s ease-in-out infinite" } : {}}
+    >
       <StageOverlay
         open={overlay.open}
         titleTop={overlay.titleTop}
@@ -623,6 +644,75 @@ export default function GamePage() {
               >
                 {game.current_question?.text || "질문을 불러오는 중..."}
               </Typography>
+
+              {/* 하트 버튼 */}
+              {currentQid && (
+                <Box
+                  sx={{
+                    mt: 1.2,
+                    pt: 1,
+                    borderTop: "1px solid rgba(255,255,255,0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "rgba(17,24,39,0.42)",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    질문이 마음에 들었나요?{"\n"}하트를 눌러주세요 🥹
+                  </Typography>
+                  <Box
+                    onClick={() => gameHeartQuestion(currentQid)}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 0.3,
+                      px: 1.6,
+                      py: 0.8,
+                      borderRadius: "var(--radius-lg)",
+                      cursor: "pointer",
+                      background: heartInfo.hearted
+                        ? "rgba(239,68,68,0.12)"
+                        : "rgba(255,255,255,0.55)",
+                      border: heartInfo.hearted
+                        ? "1.5px solid rgba(239,68,68,0.35)"
+                        : "1.5px solid rgba(0,0,0,0.10)",
+                      transition: "all 0.18s ease",
+                      userSelect: "none",
+                      "&:active": { transform: "scale(0.88)" },
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 22,
+                        lineHeight: 1,
+                        filter: heartInfo.hearted ? "none" : "grayscale(1)",
+                        transition: "filter 0.2s ease",
+                      }}
+                    >
+                      ❤️
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 900,
+                        color: heartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.35)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {heartInfo.count || 0}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </Stack>
           </Paper>
 
@@ -732,7 +822,7 @@ export default function GamePage() {
               fontSize: 13,
               fontWeight: 600,
               color: "var(--text-2)",
-              mb: 2.5,
+              mb: game.round_end?.heart_summary?.length > 0 ? 1.8 : 2.5,
               animation: "fadeIn 0.5s ease both 0.2s",
             }}
           >
@@ -740,6 +830,71 @@ export default function GamePage() {
               ? "계속 즐기거나 방을 정리해요."
               : "방장이 결정하는 중입니다..."}
           </Typography>
+
+          {/* 하트 집계 */}
+          {game.round_end?.heart_summary?.length > 0 && (
+            <Box
+              sx={{
+                width: "100%",
+                mb: 2.5,
+                animation: "slideUp 0.5s var(--spring) both 0.25s",
+              }}
+            >
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mb: 1.2 }}>
+                <Typography sx={{ fontSize: 16 }}>❤️</Typography>
+                <Typography sx={{ fontWeight: 950, fontSize: 14, letterSpacing: "-0.02em" }}>
+                  이번 라운드 인기 질문
+                </Typography>
+              </Stack>
+              <Stack spacing={0.9}>
+                {game.round_end.heart_summary.map((q, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      p: 1.4,
+                      borderRadius: "var(--radius-lg)",
+                      background: i === 0
+                        ? "linear-gradient(135deg, rgba(239,68,68,0.13), rgba(244,114,182,0.07))"
+                        : "rgba(255,255,255,0.38)",
+                      border: i === 0
+                        ? "1px solid rgba(239,68,68,0.25)"
+                        : "1px solid rgba(0,0,0,0.07)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.2,
+                      textAlign: "left",
+                    }}
+                  >
+                    {i === 0 && (
+                      <Typography sx={{ fontSize: 18, flex: "0 0 auto" }}>🏆</Typography>
+                    )}
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        flex: 1,
+                        lineHeight: 1.35,
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
+                      {q.text}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontWeight: 900,
+                        fontSize: 13,
+                        color: "#EF4444",
+                        flex: "0 0 auto",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ❤️ {q.hearts}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
 
           <Stack spacing={1.2}>
             <Button

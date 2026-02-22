@@ -83,4 +83,15 @@ module.exports = (io, socket) => {
       fail(socket, "game:hostEndGame:res", e?.message || "hostEndGame failed");
     }
   });
+
+  // ===== 질문 하트 토글 =====
+  socket.on("game:heartQuestion", async ({ question_id } = {}) => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) return;
+      await game.heartQuestion(io, { roomCode: sess.roomCode, playerId: sess.playerId, question_id });
+    } catch (e) {
+      console.error("[heartQuestion]", e?.message || e);
+    }
+  });
 };

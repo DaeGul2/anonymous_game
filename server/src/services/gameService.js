@@ -1,6 +1,7 @@
 // server/src/services/gameService.js
+const { Op } = require("sequelize");
 const { env } = require("../config/env");
-const { Room, Player, Round, Question, Answer, sequelize } = require("../models");
+const { Room, Player, Round, Question, Answer, QuestionHeart, sequelize } = require("../models");
 const { scheduleAt, clearTimers } = require("./timerService");
 const { setGameRuntime, getRoomRuntime } = require("../store/memoryStore");
 
@@ -356,10 +357,36 @@ async function nextQuestionOrEnd(io, roomCode) {
 
     await broadcastRoom(io, room.id);
 
+    // 이번 라운드 질문별 하트 집계
+    let heartSummary = [];
+    try {
+      const roundQuestions = await Question.findAll({
+        where: { round_id: game.roundId },
+        order: [["order_no", "ASC"]],
+      });
+      const qIds = roundQuestions.map((q) => q.id);
+      if (qIds.length > 0) {
+        const heartRows = await QuestionHeart.findAll({
+          where: { question_id: { [Op.in]: qIds } },
+          attributes: ["question_id", [sequelize.fn("COUNT", sequelize.col("id")), "cnt"]],
+          group: ["question_id"],
+          raw: true,
+        });
+        const heartMap = new Map(heartRows.map((h) => [h.question_id, Number(h.cnt)]));
+        heartSummary = roundQuestions
+          .map((q) => ({ text: q.text, hearts: heartMap.get(q.id) || 0 }))
+          .filter((q) => q.hearts > 0)
+          .sort((a, b) => b.hearts - a.hearts);
+      }
+    } catch (e) {
+      console.error("[heartSummary]", e?.message);
+    }
+
     io.to(room.code).emit("game:roundEnd", {
       ok: true,
       round_no: room.current_round_no,
       host_player_id: room.host_player_id,
+      heart_summary: heartSummary,
     });
 
     return;
@@ -448,6 +475,27 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
   io.to(room.code).emit("game:ended", { ok: true });
 }
 
+async function heartQuestion(io, { roomCode, playerId, question_id }) {
+  if (!question_id || !playerId) return;
+
+  const existing = await QuestionHeart.findOne({ where: { question_id, player_id: playerId } });
+  if (existing) {
+    await existing.destroy();
+  } else {
+    try {
+      await QuestionHeart.create({ question_id, player_id: playerId });
+    } catch (_) {} // unique constraint 중복 무시
+  }
+
+  const hearts = await QuestionHeart.findAll({ where: { question_id } });
+  io.to(roomCode).emit("game:heartQuestion:update", {
+    ok: true,
+    question_id,
+    count: hearts.length,
+    hearted_by: hearts.map((h) => h.player_id),
+  });
+}
+
 module.exports = {
   startRound,
   hostStartGame,
@@ -458,4 +506,5 @@ module.exports = {
   hostRevealNext,
   hostNextRound,
   hostEndGame,
+  heartQuestion,
 };

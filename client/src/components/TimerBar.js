@@ -15,10 +15,10 @@ export default function TimerBar({ deadlineAt, totalSeconds }) {
   }, [deadlineAt]);
 
   const pct       = Math.max(0, Math.min(100, (left / totalMs) * 100));
-  const isDanger  = left <= 10_000;
+  const isDanger  = left <= 15_000;
   const isWarning = left <= 30_000 && !isDanger;
 
-  // 10초 진입 시 한 번만 shake 트리거
+  // 15초 진입 시 한 번만 shake 트리거
   useEffect(() => {
     if (isDanger && !prevDangerRef.current && wrapRef.current) {
       wrapRef.current.style.animation = "none";
@@ -92,12 +92,12 @@ export default function TimerBar({ deadlineAt, totalSeconds }) {
       {isDanger && (
         <Typography
           sx={{
-            fontSize: 11, fontWeight: 800, color: "#EF4444",
-            mt: 0.7, textAlign: "center", letterSpacing: "0.06em",
-            animation: "pulseBeat 0.65s ease-in-out infinite",
+            fontSize: 12, fontWeight: 900, color: "#EF4444",
+            mt: 0.8, textAlign: "center", letterSpacing: "0.04em",
+            animation: "pulseBeat 0.5s ease-in-out infinite",
           }}
         >
-          ⚡ 마감 임박!
+          ⚡ 마감 임박! 서두르세요!
         </Typography>
       )}
     </Box>
