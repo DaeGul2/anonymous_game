@@ -238,6 +238,8 @@ export default function GamePage() {
     error,
   } = useRoomStore();
 
+  const [loadFailed, setLoadFailed] = useState(false);
+
   useEffect(() => { initSocket(); }, [initSocket]);
 
   useEffect(() => {
@@ -248,6 +250,13 @@ export default function GamePage() {
   useEffect(() => {
     if (state?.room?.phase === "lobby") nav(`/room/${state.room.code}`);
   }, [state, nav]);
+
+  // 5초 후에도 state가 없으면 접속 실패로 판단
+  useEffect(() => {
+    if (state) { setLoadFailed(false); return; }
+    const t = setTimeout(() => setLoadFailed(true), 5000);
+    return () => clearTimeout(t);
+  }, [state]);
 
   const myPlayer = useMemo(() => {
     const players = state?.players || [];
@@ -956,13 +965,50 @@ export default function GamePage() {
         </Paper>
       )}
 
-      {!phase && (
+      {!phase && !loadFailed && (
         <Paper className="glassCard section" sx={{ p: 2.5, textAlign: "center" }}>
-          <Typography
-            sx={{ color: "var(--text-2)", fontWeight: 700, fontSize: 14 }}
-          >
+          <Typography sx={{ color: "var(--text-2)", fontWeight: 700, fontSize: 14 }}>
             게임 상태를 불러오는 중...
           </Typography>
+        </Paper>
+      )}
+
+      {!phase && loadFailed && (
+        <Paper
+          className="glassCard section"
+          sx={{
+            p: 3,
+            textAlign: "center",
+            border: "1px solid rgba(239,68,68,0.25) !important",
+            animation: "slideUp 0.4s var(--spring) both",
+          }}
+        >
+          <Typography sx={{ fontSize: 40, mb: 1.5 }}>😵</Typography>
+          <Typography sx={{ fontWeight: 950, fontSize: 17, letterSpacing: "-0.02em", mb: 0.8 }}>
+            게임에 접속할 수 없어요
+          </Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", mb: 2.5, lineHeight: 1.5 }}>
+            방이 종료됐거나 연결이 끊겼어요.{"\n"}홈으로 돌아가서 다시 시도해보세요.
+          </Typography>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={() => {
+              sessionStorage.removeItem("ag:home_redirect_done");
+              nav("/", { replace: true });
+            }}
+            sx={{
+              fontWeight: 900,
+              fontSize: 16,
+              borderRadius: 999,
+              py: 1.6,
+              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              boxShadow: "0 6px 22px rgba(124,58,237,0.32)",
+              "&:active": { transform: "scale(0.97)" },
+            }}
+          >
+            홈으로 돌아가기
+          </Button>
         </Paper>
       )}
     </Box>

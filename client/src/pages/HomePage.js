@@ -23,21 +23,23 @@ export default function HomePage() {
     if (state?.room?.code) nav(`/room/${state.room.code}`);
   }, [state, nav]);
 
-  // 로그인 후 기존 활성 방 자동 복귀
+  // 로그인 후 기존 활성 방 자동 복귀 (세션당 1회만 — 루프 방지)
   useEffect(() => {
     if (!user) return;
+    // 이미 이 세션에서 리다이렉트 시도했으면 스킵 (게임방 → 홈 → 또 리다이렉트 루프 방지)
+    if (sessionStorage.getItem("ag:home_redirect_done")) return;
+
     let cancelled = false;
     (async () => {
       const res = await checkActiveRoom();
       if (cancelled) return;
       if (res?.ok && res?.room?.code) {
-        // 활성 방 있음 → 페이즈에 따라 라우팅
+        sessionStorage.setItem("ag:home_redirect_done", "1");
         const dest = res.room.phase === "lobby"
           ? `/room/${res.room.code}`
           : `/game/${res.room.code}`;
         nav(dest, { replace: true });
       } else {
-        // 활성 방 없음 → 마지막 방 기록이 있으면 종료된 방 메시지 표시
         try {
           const lastCode = localStorage.getItem("ag:last_room");
           if (lastCode) {
