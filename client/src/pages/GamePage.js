@@ -331,6 +331,9 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.question_submitted]);
 
+  // ← currentQid는 aKey useMemo보다 먼저 선언해야 함
+  const currentQid = game.current_question?.id || "";
+
   const aKey = useMemo(
     () =>
       currentQid
@@ -424,7 +427,6 @@ export default function GamePage() {
   const stickyTop = "calc(var(--header-h) + env(safe-area-inset-top) + 10px)";
 
   // 현재 질문 하트 정보
-  const currentQid = game.current_question?.id || "";
   const heartInfo = game.hearts_by_qid?.[currentQid] || { count: 0, hearted: false };
 
   return (
