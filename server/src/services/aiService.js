@@ -2,26 +2,31 @@
 const { env } = require("../config/env");
 const { Question, Answer, Round } = require("../models");
 
-// 서버 사이드 템플릿 (클라이언트 constants/questionTemplates.js와 동일)
+// 서버 사이드 템플릿 (명제형/if형만)
 const QUESTION_TEMPLATES = [
-  "우리 중 ___ 할 것 같은 사람은?",
-  "이 방에서 제일 ___ 할 것 같은 사람은?",
-  "솔직히 ___ 은(는) 좀 무섭다",
+  "우리 중 ___ 할 것 같은 사람은",
+  "이 방에서 제일 ___ 할 것 같은 사람은",
+  "솔직히 ___ 은 좀 무서운 편",
   "내가 가장 후회하는 건 ___",
-  "___가 없으면 못 살 것 같다",
-  "죽기 전에 꼭 ___ 해보고 싶다",
+  "___가 없으면 못 살 것 같음",
+  "죽기 전에 꼭 ___ 해보고 싶음",
   "요즘 가장 고민되는 건 ___",
-  "비밀인데, 사실 나는 ___",
-  "나는 ___ 할 때 가장 행복하다",
-  "___ vs ___, 너는 어떤 게 더 좋아?",
+  "비밀인데 사실 나는 ___",
+  "나는 ___ 할 때 가장 행복한 편",
+  "___ vs ___ 나는 이게 더 좋음",
   "살면서 가장 창피했던 순간은 ___",
-  "만약 내가 ___ 라면 어떨 것 같아?",
-  "우리 중 ___ 를 가장 잘 할 것 같은 사람은?",
-  "지금 당장 ___ 하고 싶다",
+  "만약 내가 ___ 라면 ___ 했을 것 같음",
+  "우리 중 ___ 를 가장 잘 할 것 같은 사람은",
+  "지금 당장 ___ 하고 싶음",
+  "나는 만약 싱글이라면 이 자리에 꼬시고 싶은 사람이 있음",
+  "나는 ___ 하는 사람이 좋은 편",
+  "사실 ___ 은 아직도 이해 못 하겠음",
+  "나는 친구보다 연애가 더 중요한 편",
+  "만약 오늘이 마지막 날이라면 ___ 할 것 같음",
+  "요즘 들어 ___ 이 생각보다 소중하다는 걸 느낌",
 ];
 
 // 방의 Q&A 이력을 { question, answers[] } 배열로 반환
-// currentRoundId 이전 라운드만 or 포함 여부는 옵션으로 제어
 async function getRoomHistory(roomId, currentRoundId, { includeCurrentRound = false, beforeOrderNo = null } = {}) {
   const rounds = await Round.findAll({
     where: { room_id: roomId },
@@ -35,7 +40,6 @@ async function getRoomHistory(roomId, currentRoundId, { includeCurrentRound = fa
     if (isCurrent && !includeCurrentRound) continue;
 
     const qWhere = { round_id: round.id };
-    // 현재 라운드는 이미 reveal된 것만 (order_no < 현재 질문 순서)
     if (isCurrent && beforeOrderNo != null) {
       const { Op } = require("sequelize");
       qWhere.order_no = { [Op.gt]: 0, [Op.lt]: beforeOrderNo };
@@ -84,35 +88,39 @@ async function generateAIQuestion({ roomId, roundId, humanQuestions }) {
       ? humanQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")
       : "없음";
 
-  const prompt = `당신은 친구들과 익명 게임을 즐기는 한국인 참가자야.
-지금 각자 질문을 하나씩 내야 해.
+  const prompt = `당신은 20대 후반~30대 한국인으로 친구들과 익명 게임 중이야.
+지금 게임에 쓸 질문 하나를 만들어야 해.
 
-이번 라운드에 다른 참가자들이 낸 질문:
+이번 라운드에 다른 사람들이 낸 질문:
 ${humanQText}
 
-이전 라운드 대화 분위기 참고:
+이전 대화 분위기 참고:
 ${historyText}
 
-질문 형식 예시 (꼭 이 형식 아니어도 됨):
+참고할 질문 형식 예시:
 ${template}
 
 규칙:
-- 절대 AI같은 질문 금지 (영어, 격식체, 나열식 금지)
-- 친구들끼리 카톡할 때 쓰는 짧은 구어체로
-- 솔직하고 약간 뻔뻔하거나 공감가는 내용
+- 반드시 명제형이나 if형으로 써라 (예: "나는 ~한 편" "만약 ~라면 ~임" "~가 없으면 못 삼" "나는 ~하는 사람이 좋음")
+- "너는 ~해?" "~야?" "~어?" 같은 직접 질문 절대 금지
+- 특수기호(! , ? 등) 절대 금지
+- AI처럼 격식체나 영어 쓰지 마
 - 30자 이내
-- 질문 텍스트만 출력, 다른 말 쓰지 마
+- 질문 텍스트만 출력
 
 질문:`;
 
   try {
     const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 80,
       temperature: 0.92,
     });
-    const text = (res.choices[0]?.message?.content || "").trim().replace(/^["']|["']$/g, "");
+    const text = (res.choices[0]?.message?.content || "")
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/[!,?]/g, "");
     return text || _fallbackQuestion();
   } catch (e) {
     console.error("[AI generateQuestion]", e?.message);
@@ -121,19 +129,16 @@ ${template}
 }
 
 // AI 답변 1개 생성
-// currentQuestionOrderNo: 현재 질문의 order_no (이보다 작은 현재 라운드 Q&A를 context로 포함)
 async function generateAIAnswer({ roomId, roundId, question, allQuestions, currentQuestionOrderNo }) {
   const openai = getOpenAI();
   if (!openai) return _fallbackAnswer();
 
-  // 이전 라운드 전체 이력 + 현재 라운드에서 이미 공개된 Q&A
   const prevHistory = await getRoomHistory(roomId, roundId);
   const currentRoundHistory = await getRoomHistory(roomId, roundId, {
     includeCurrentRound: true,
     beforeOrderNo: currentQuestionOrderNo ?? 999,
   });
 
-  // 합쳐서 최근 8개만 사용 (토큰 절약)
   const combined = [...prevHistory, ...currentRoundHistory].slice(-8);
 
   const historyText =
@@ -143,42 +148,35 @@ async function generateAIAnswer({ roomId, roundId, question, allQuestions, curre
           .join("\n\n")
       : "없음";
 
-  const otherQText =
-    allQuestions.filter((q) => q !== question).length > 0
-      ? allQuestions
-          .filter((q) => q !== question)
-          .map((q, i) => `${i + 1}. ${q}`)
-          .join("\n")
-      : "없음";
+  const prompt = `당신은 20대 후반~30대 한국인으로 친구들과 익명 게임 중이야.
+아래 질문에 솔직하게 짧게 답해야 해.
 
-  const prompt = `당신은 친구들과 익명 게임을 즐기는 한국인 참가자야.
-지금 아래 질문에 익명으로 솔직하게 답해야 해.
+질문: ${question}
 
-질문: "${question}"
-
-이전 라운드 대화 분위기:
+이전 대화 분위기 (말투 참고용):
 ${historyText}
 
-이번 라운드 다른 질문들:
-${otherQText}
-
 규칙:
-- 절대 AI같은 답변 금지 (격식체, 영어, 분석적 문장 금지)
-- 친구들이 카톡에서 쓸 법한 짧고 솔직한 구어체
-- 질문이 특정인·내부 정보가 필요한 경우 (예: "우리 팀에서...", "우리 학교...") → "모르지", "너", "글쎄" 같은 두루뭉술한 답변 가능
-- 15자 이내로 짧게
-- 답변 텍스트만 출력, 다른 말 쓰지 마
+- "~함" "~인듯" "~임" "~인 것 같음" 같은 짧은 구어체로 써라
+- 특수기호(! , ? 등) 절대 금지
+- 영어나 격식체 절대 금지
+- 질문이 내부 정보가 필요하거나 모르는 내용이면 "글쎄" "모르겠음" "뭐" 처럼 두루뭉술하게
+- 카톡 단답처럼 짧게 (15자 이내)
+- 답변 텍스트만 출력
 
 답변:`;
 
   try {
     const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 60,
       temperature: 0.92,
     });
-    const text = (res.choices[0]?.message?.content || "").trim().replace(/^["']|["']$/g, "");
+    const text = (res.choices[0]?.message?.content || "")
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/[!,]/g, "");
     return text || _fallbackAnswer();
   } catch (e) {
     console.error("[AI generateAnswer]", e?.message);
@@ -188,17 +186,18 @@ ${otherQText}
 
 function _fallbackQuestion() {
   const fallbacks = [
-    "요즘 뭐에 빠져있어?",
-    "솔직히 지금 제일 고민되는 거 뭐야?",
-    "최근에 웃긴 일 있었어?",
-    "요즘 가장 하고 싶은 거 뭐야?",
-    "지금 당장 떠나고 싶은 곳 있어?",
+    "나는 요즘 이상하게 감성적인 편",
+    "솔직히 지금 제일 고민되는 건 돈",
+    "죽기 전에 꼭 세계여행은 해봐야 함",
+    "나는 혼자 있는 게 좋을 때가 더 많음",
+    "만약 로또 당첨되면 아무한테도 말 안 할 것 같음",
+    "나는 만약 싱글이라면 이 자리에 꼬시고 싶은 사람이 있음",
   ];
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
 function _fallbackAnswer() {
-  const fallbacks = ["모르지ㅋㅋ", "글쎄...", "생각해볼게", "비밀ㅋ", "그건 좀..."];
+  const fallbacks = ["글쎄", "모르겠음", "있긴 함", "비밀", "그건 좀", "뭐"];
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
