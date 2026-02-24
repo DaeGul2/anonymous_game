@@ -9,8 +9,8 @@ module.exports = (sequelize) => {
 
       room_id: { type: DataTypes.UUID, allowNull: false },
 
-      // Google 로그인 유저 FK
-      user_id: { type: DataTypes.UUID, allowNull: false },
+      // Google 로그인 유저 FK (AI 플레이어는 NULL)
+      user_id: { type: DataTypes.UUID, allowNull: true },
 
       nickname: { type: DataTypes.STRING(30), allowNull: false },
       avatar:   { type: DataTypes.TINYINT,   allowNull: true,  defaultValue: 0 },

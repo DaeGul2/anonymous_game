@@ -1,5 +1,4 @@
 // src/services/roomService.js
-const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
 const { Room, Player, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
@@ -122,7 +121,7 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar, a
         await Player.create(
           {
             room_id: room.id,
-            user_id: randomUUID(), // AI 전용 가짜 UUID
+            user_id: null, // AI 플레이어는 user_id 없음 (FK nullable)
             nickname: aiNickname,
             avatar: Math.floor(Math.random() * 12), // AVATARS 길이 12
             is_ready: true,   // AI는 항상 준비완료
