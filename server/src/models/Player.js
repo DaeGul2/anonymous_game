@@ -19,6 +19,9 @@ module.exports = (sequelize) => {
       joined_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       last_seen_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       is_connected: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+
+      // AI 플레이어 여부
+      is_ai: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     },
     {
       tableName: "players",

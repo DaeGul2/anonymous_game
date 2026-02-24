@@ -31,6 +31,10 @@ module.exports = (sequelize) => {
       },
 
       phase_deadline_at: { type: DataTypes.DATE, allowNull: true },
+
+      // AI 포함 방
+      is_ai_room:       { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      ai_player_count:  { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     },
     {
       tableName: "rooms",

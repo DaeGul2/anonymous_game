@@ -282,8 +282,8 @@ export const useRoomStore = create((set, get) => ({
   // ===== actions =====
   roomList: () => connectSocket().emit(EVENTS.ROOM_LIST),
 
-  roomCreate: ({ title, max_players, nickname, avatar }) => {
-    connectSocket().emit(EVENTS.ROOM_CREATE, { title, max_players, nickname, avatar });
+  roomCreate: ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count }) => {
+    connectSocket().emit(EVENTS.ROOM_CREATE, { title, max_players, nickname, avatar, ai_secret_key, ai_player_count });
   },
 
   roomJoin: ({ code, nickname, avatar }) => {

@@ -34,12 +34,15 @@ module.exports = (io, socket) => {
   });
 
   // 2) 방 만들기
-  socket.on("room:create", async ({ title, max_players, nickname, avatar } = {}) => {
+  socket.on("room:create", async ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count } = {}) => {
     try {
       const userId = getUserId(socket);
       if (!userId) return fail(socket, "room:create:res", "로그인이 필요합니다");
 
-      const { room, player } = await createRoom({ title, max_players, hostNickname: nickname, user_id: userId, avatar });
+      const { room, player } = await createRoom({
+        title, max_players, hostNickname: nickname, user_id: userId, avatar,
+        ai_secret_key, ai_player_count,
+      });
 
       socket.join(room.code);
       touchRoom(room.code, room.id);

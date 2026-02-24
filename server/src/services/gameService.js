@@ -4,6 +4,7 @@ const { env } = require("../config/env");
 const { Room, Player, Round, Question, Answer, QuestionHeart, sequelize } = require("../models");
 const { scheduleAt, clearTimers } = require("./timerService");
 const { setGameRuntime, getRoomRuntime } = require("../store/memoryStore");
+const aiService = require("./aiService");
 
 function shuffle(arr) {
   const a = [...arr];
@@ -12,6 +13,79 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// ===== AI 포함 방 헬퍼 =====
+
+// 아직 제출 안 한 AI 플레이어들의 질문을 GPT로 생성해 저장
+async function _generateAndSaveAIQuestions(room, roundId) {
+  const aiPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: true } });
+  if (aiPlayers.length === 0) return;
+
+  const humanQuestions = await Question.findAll({ where: { round_id: roundId } });
+  const humanQTexts = humanQuestions.map((q) => q.text);
+
+  for (const aiPlayer of aiPlayers) {
+    const exists = await Question.findOne({
+      where: { round_id: roundId, submitted_by_player_id: aiPlayer.id },
+    });
+    if (exists) continue;
+
+    const text = await aiService.generateAIQuestion({
+      roomId: room.id,
+      roundId,
+      humanQuestions: humanQTexts,
+    });
+
+    await Question.create({
+      room_id: room.id,
+      round_id: roundId,
+      text,
+      submitted_by_player_id: aiPlayer.id,
+      submitted_at: new Date(),
+      order_no: 0,
+      is_used: false,
+    });
+  }
+}
+
+// 아직 답변 안 한 AI 플레이어들의 답변을 GPT로 생성해 저장
+async function _generateAndSaveAIAnswers(room, game) {
+  const { roundId, currentQuestionId } = game;
+  if (!currentQuestionId) return;
+
+  const aiPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: true } });
+  if (aiPlayers.length === 0) return;
+
+  const question = await Question.findByPk(currentQuestionId);
+  if (!question) return;
+
+  const allQuestions = await Question.findAll({ where: { round_id: roundId } });
+  const allQTexts = allQuestions.map((q) => q.text);
+
+  for (const aiPlayer of aiPlayers) {
+    const exists = await Answer.findOne({
+      where: { question_id: currentQuestionId, answered_by_player_id: aiPlayer.id },
+    });
+    if (exists) continue;
+
+    const text = await aiService.generateAIAnswer({
+      roomId: room.id,
+      roundId,
+      question: question.text,
+      allQuestions: allQTexts,
+      currentQuestionOrderNo: question.order_no, // 현재 라운드에서 이 질문 이전에 공개된 Q&A를 context로 포함
+    });
+
+    await Answer.create({
+      room_id: room.id,
+      round_id: roundId,
+      question_id: currentQuestionId,
+      text,
+      answered_by_player_id: aiPlayer.id,
+      submitted_at: new Date(),
+    });
+  }
 }
 
 async function broadcastRoom(io, roomId) {
@@ -142,15 +216,29 @@ async function submitQuestion(io, { roomCode, playerId, text }) {
   room.last_activity_at = new Date();
   await room.save();
 
-  // ✅ 질문도: 전원 제출하면 타임아웃 기다리지 말고 즉시 다음 단계로
-  const players = await Player.findAll({ where: { room_id: room.id } });
-  const submittedCount = await Question.count({ where: { round_id: roundId } });
-
-  if (submittedCount >= players.length) {
-    // 타이머 중복 호출 방지
-    clearTimers(room.code, ["question_submit_end"]);
-    await endQuestionSubmit(io, room.code);
-    return;
+  // 전원 제출하면 타임아웃 기다리지 말고 즉시 다음 단계로
+  if (room.is_ai_room) {
+    // AI 방: 인간 플레이어 전원 제출 여부만 체크
+    const humanPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: false } });
+    const humanSubmitted = await Question.count({
+      where: {
+        round_id: roundId,
+        submitted_by_player_id: { [Op.in]: humanPlayers.map((p) => p.id) },
+      },
+    });
+    if (humanSubmitted >= humanPlayers.length) {
+      clearTimers(room.code, ["question_submit_end"]);
+      await endQuestionSubmit(io, room.code);
+      return;
+    }
+  } else {
+    const players = await Player.findAll({ where: { room_id: room.id } });
+    const submittedCount = await Question.count({ where: { round_id: roundId } });
+    if (submittedCount >= players.length) {
+      clearTimers(room.code, ["question_submit_end"]);
+      await endQuestionSubmit(io, room.code);
+      return;
+    }
   }
 
   io.to(room.code).emit("game:questionSubmitted", { ok: true });
@@ -164,6 +252,15 @@ async function endQuestionSubmit(io, roomCode) {
   const rt = getRoomRuntime(room.code);
   const roundId = rt?.game?.roundId;
   if (!roundId) return;
+
+  // AI 방: 아직 제출 안 한 AI 플레이어 질문을 GPT로 생성
+  if (room.is_ai_room) {
+    try {
+      await _generateAndSaveAIQuestions(room, roundId);
+    } catch (e) {
+      console.error("[AI generateQuestions]", e?.message);
+    }
+  }
 
   const questions = await Question.findAll({
     where: { round_id: roundId },
@@ -265,13 +362,29 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
   room.last_activity_at = new Date();
   await room.save();
 
-  const players = await Player.findAll({ where: { room_id: room.id } });
-  const answeredCount = await Answer.count({ where: { question_id: qid } });
-
-  if (answeredCount >= players.length) {
-    await endAnswer(io, room.code);
+  if (room.is_ai_room) {
+    // AI 방: 인간 플레이어 전원 답변 여부만 체크
+    const humanPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: false } });
+    const humanAnswered = await Answer.count({
+      where: {
+        question_id: qid,
+        answered_by_player_id: { [Op.in]: humanPlayers.map((p) => p.id) },
+      },
+    });
+    if (humanAnswered >= humanPlayers.length) {
+      clearTimers(room.code, ["answer_end"]);
+      await endAnswer(io, room.code);
+    } else {
+      io.to(room.code).emit("game:answerSubmitted", { ok: true });
+    }
   } else {
-    io.to(room.code).emit("game:answerSubmitted", { ok: true });
+    const players = await Player.findAll({ where: { room_id: room.id } });
+    const answeredCount = await Answer.count({ where: { question_id: qid } });
+    if (answeredCount >= players.length) {
+      await endAnswer(io, room.code);
+    } else {
+      io.to(room.code).emit("game:answerSubmitted", { ok: true });
+    }
   }
 }
 
@@ -284,6 +397,15 @@ async function endAnswer(io, roomCode) {
   const roundId = rt?.game?.roundId;
   const qid = rt?.game?.currentQuestionId;
   if (!roundId || !qid) return;
+
+  // AI 방: 아직 답변 안 한 AI 플레이어 답변을 GPT로 생성
+  if (room.is_ai_room) {
+    try {
+      await _generateAndSaveAIAnswers(room, rt.game);
+    } catch (e) {
+      console.error("[AI generateAnswers]", e?.message);
+    }
+  }
 
   const question = await Question.findByPk(qid);
   if (!question) return;
@@ -437,8 +559,10 @@ async function hostStartGame(io, roomCode, hostPlayerId) {
   if (room.phase !== "lobby") throw new Error("로비 상태에서만 시작 가능");
 
   const players = await Player.findAll({ where: { room_id: room.id } });
-  if (players.length < 1) throw new Error("플레이어가 없음");
-  const allReady = players.every((p) => p.is_ready);
+  const humanPlayers = players.filter((p) => !p.is_ai);
+  if (humanPlayers.length < 1) throw new Error("플레이어가 없음");
+  // AI는 항상 ready, 인간 플레이어만 체크
+  const allReady = humanPlayers.every((p) => p.is_ready);
   if (!allReady) throw new Error("아직 모든 플레이어가 준비되지 않았습니다");
 
   await startRound(io, roomCode);

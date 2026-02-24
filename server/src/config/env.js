@@ -38,6 +38,10 @@ const env = {
 
   QUESTION_SUBMIT_SECONDS: num("QUESTION_SUBMIT_SECONDS", 120),
   ANSWER_SECONDS: num("ANSWER_SECONDS", 60),
+
+  // AI 포함 방
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
+  AI_SECRET_KEY:  process.env.AI_SECRET_KEY  || "",
 };
 
 module.exports = { env };

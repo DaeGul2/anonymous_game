@@ -1,7 +1,17 @@
 // src/services/roomService.js
+const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
 const { Room, Player, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
+const { env } = require("../config/env");
+
+// AI 플레이어용 한국 닉네임 풀
+const AI_NICKNAME_POOL = [
+  "감자", "고구마", "낙지", "문어", "오이", "두부", "라면",
+  "호떡", "파전", "하루", "달달", "쫀쫀", "맑음", "새벽",
+  "노을", "구름", "바람", "봄봄", "솜사탕", "모모",
+  "두리", "몽글", "초코", "사탕", "도넛",
+];
 
 function randomCode(len = 6) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 문자 제거
@@ -49,16 +59,30 @@ async function listRooms() {
   }));
 }
 
-async function createRoom({ title, max_players, hostNickname, user_id, avatar }) {
+async function createRoom({ title, max_players, hostNickname, user_id, avatar, ai_secret_key, ai_player_count }) {
   const nickname = normalizeNickname(hostNickname);
   const code = await generateUniqueRoomCode();
+
+  // AI 포함 방 검증
+  const aiCount = ai_secret_key ? Math.max(0, Number(ai_player_count) || 0) : 0;
+  const isAiRoom = aiCount > 0;
+  if (ai_secret_key) {
+    if (!env.AI_SECRET_KEY) throw new Error("서버에 AI_SECRET_KEY가 설정되지 않음");
+    if (ai_secret_key !== env.AI_SECRET_KEY) throw new Error("AI 코드가 올바르지 않음");
+    if (aiCount < 1 || aiCount > 3) throw new Error("AI 플레이어는 1~3명");
+  }
+
+  // AI 방이면 max = 인간 2 + AI수, 아니면 일반 입력값
+  const effectiveMax = isAiRoom ? 2 + aiCount : (Number(max_players) || 8);
 
   return await sequelize.transaction(async (t) => {
     const room = await Room.create(
       {
         code,
         title: (title || "").trim() || "익명게임 방",
-        max_players: Number(max_players) || 8,
+        max_players: effectiveMax,
+        is_ai_room: isAiRoom,
+        ai_player_count: aiCount,
         status: "lobby",
         phase: "lobby",
         last_activity_at: new Date(),
@@ -73,6 +97,7 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar })
         nickname,
         avatar: Number.isInteger(Number(avatar)) ? Number(avatar) : 0,
         is_ready: false,
+        is_ai: false,
         joined_at: new Date(),
         last_seen_at: new Date(),
         is_connected: true,
@@ -82,6 +107,34 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar })
 
     room.host_player_id = host.id;
     await room.save({ transaction: t });
+
+    // AI 플레이어 생성
+    if (isAiRoom) {
+      const usedNicknames = new Set([nickname]);
+      const availablePool = AI_NICKNAME_POOL.filter((n) => !usedNicknames.has(n));
+      // 풀이 부족하면 숫자를 붙여 확장
+      while (availablePool.length < aiCount) {
+        availablePool.push(`익명${availablePool.length + 1}`);
+      }
+
+      for (let i = 0; i < aiCount; i++) {
+        const aiNickname = availablePool[i];
+        await Player.create(
+          {
+            room_id: room.id,
+            user_id: randomUUID(), // AI 전용 가짜 UUID
+            nickname: aiNickname,
+            avatar: Math.floor(Math.random() * 12), // AVATARS 길이 12
+            is_ready: true,   // AI는 항상 준비완료
+            is_ai: true,
+            joined_at: new Date(Date.now() + i + 1), // joined_at 순서 보장
+            last_seen_at: new Date(),
+            is_connected: true,
+          },
+          { transaction: t }
+        );
+      }
+    }
 
     return { room, player: host };
   });
@@ -162,9 +215,10 @@ async function joinRoom({ code, nickname, user_id, avatar }) {
       return { room, player: existing, is_rejoin: true };
     }
 
-    // 정원 체크
-    const playerCount = await Player.count({ where: { room_id: room.id }, transaction: t });
-    if (playerCount >= room.max_players) throw new Error("방이 꽉 찼음");
+    // 정원 체크 (AI 방은 인간 플레이어만 카운트)
+    const humanCount = await Player.count({ where: { room_id: room.id, is_ai: false }, transaction: t });
+    const humanMax = room.is_ai_room ? (room.max_players - room.ai_player_count) : room.max_players;
+    if (humanCount >= humanMax) throw new Error("방이 꽉 찼음");
 
     // 닉네임 중복 불허
     const dup = await Player.findOne({ where: { room_id: room.id, nickname: nn }, transaction: t });
@@ -242,6 +296,19 @@ async function transferHostIfNeeded(roomId) {
       return null;
     }
 
+    // AI가 아닌 플레이어에게 방장 위임 시도
+    const nextHumanHost = await Player.findOne({
+      where: { room_id: roomId, is_ai: false },
+      order: [["joined_at", "ASC"]],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (nextHumanHost) {
+      room.host_player_id = nextHumanHost.id;
+      await room.save({ transaction: t });
+      return room;
+    }
+
     room.host_player_id = nextHost.id;
     await room.save({ transaction: t });
     return room;
@@ -271,13 +338,16 @@ async function leaveRoom({ roomId, playerId }) {
       lock: t.LOCK.UPDATE,
     });
 
-    if (remaining.length === 0) {
+    // 인간 플레이어가 없으면 방 폭파 (AI만 남은 경우 포함)
+    const humanRemaining = remaining.filter((p) => !p.is_ai);
+    if (humanRemaining.length === 0) {
       await Room.destroy({ where: { id: roomId }, transaction: t });
       return { room: null, room_deleted: true };
     }
 
     if (wasHost) {
-      room.host_player_id = remaining[0].id; // 오래된 사람
+      // AI가 아닌 플레이어에게 방장 위임
+      room.host_player_id = (humanRemaining[0] || remaining[0]).id;
     }
 
     // 로비로 돌아갈 때 ready reset은 “라운드 종료”에서 할 거라 여기서는 안 건드림
