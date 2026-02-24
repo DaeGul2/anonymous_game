@@ -1,6 +1,7 @@
 // src/services/roomService.js
+const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
-const { Room, Player, sequelize } = require("../models");
+const { Room, Player, User, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
 const { env } = require("../config/env");
 
@@ -118,10 +119,21 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar, a
 
       for (let i = 0; i < aiCount; i++) {
         const aiNickname = availablePool[i];
+        // AI 플레이어용 가짜 User 레코드 생성 (FK 만족용)
+        const aiUser = await User.create(
+          {
+            google_id: `ai_bot_${randomUUID()}`,
+            email: `ai@bot.internal`,
+            display_name: aiNickname,
+            avatar_url: null,
+          },
+          { transaction: t }
+        );
+
         await Player.create(
           {
             room_id: room.id,
-            user_id: null, // AI 플레이어는 user_id 없음 (FK nullable)
+            user_id: aiUser.id,
             nickname: aiNickname,
             avatar: Math.floor(Math.random() * 12), // AVATARS 길이 12
             is_ready: true,   // AI는 항상 준비완료
