@@ -143,6 +143,14 @@ export default function RoomLobbyPage() {
     }
   }, [state, nav]);
 
+  // 방 못 찾으면 홈으로
+  useEffect(() => {
+    if (error && !state?.room) {
+      const t = setTimeout(() => nav("/", { replace: true }), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [error, state, nav]);
+
   const myPlayer = useMemo(() => {
     const players = state?.players || [];
     return players.find((p) => p.user_id === user?.id) || null;

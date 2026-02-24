@@ -110,6 +110,10 @@ async function main() {
   });
 
   app.use((req, res) => {
+    // 브라우저 직접 접근(GET + HTML 요청)이면 클라이언트로 리다이렉트
+    if (req.method === "GET" && req.accepts("html")) {
+      return res.redirect(env.CLIENT_URL || "/");
+    }
     res.status(404).json({ ok: false, message: "Not Found" });
   });
   app.use(errorHandler);
