@@ -1,8 +1,8 @@
 // src/services/aiService.js
 const { env } = require("../config/env");
-const { Question, Answer, Round } = require("../models");
+const { Question, Answer, Round, QaArchive } = require("../models");
 
-// 서버 사이드 템플릿 (명제형/if형만)
+// 참고용 질문 형식 (강제 아님)
 const QUESTION_TEMPLATES = [
   "우리 중 ___ 할 것 같은 사람은",
   "이 방에서 제일 ___ 할 것 같은 사람은",
@@ -25,6 +25,25 @@ const QUESTION_TEMPLATES = [
   "만약 오늘이 마지막 날이라면 ___ 할 것 같음",
   "요즘 들어 ___ 이 생각보다 소중하다는 걸 느낌",
 ];
+
+// qa_archives에서 랜덤 샘플 가져오기
+async function getArchiveSamples(count = 5) {
+  try {
+    const rows = await QaArchive.findAll({
+      order: QaArchive.sequelize.random(),
+      limit: count,
+    });
+    return rows.map((r) => ({ question: r.question_text, answer: r.answer_text }));
+  } catch {
+    return [];
+  }
+}
+
+// 아카이브 샘플을 텍스트로 포맷
+function formatArchiveSamples(samples) {
+  if (samples.length === 0) return "";
+  return samples.map((s) => `Q: ${s.question}\nA: ${s.answer}`).join("\n\n");
+}
 
 // 방의 Q&A 이력을 { question, answers[] } 배열로 반환
 async function getRoomHistory(roomId, currentRoundId, { includeCurrentRound = false, beforeOrderNo = null } = {}) {
@@ -67,60 +86,72 @@ function getOpenAI() {
   return new OpenAI({ apiKey: env.OPENAI_API_KEY });
 }
 
+// 랜덤으로 템플릿 몇 개 뽑기
+function pickTemplates(count = 4) {
+  const shuffled = [...QUESTION_TEMPLATES].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 // AI 질문 1개 생성
 async function generateAIQuestion({ roomId, roundId, humanQuestions }) {
   const openai = getOpenAI();
   if (!openai) return _fallbackQuestion();
 
-  const history = await getRoomHistory(roomId, roundId);
-  const template = QUESTION_TEMPLATES[Math.floor(Math.random() * QUESTION_TEMPLATES.length)];
+  const [history, archiveSamples] = await Promise.all([
+    getRoomHistory(roomId, roundId),
+    getArchiveSamples(5),
+  ]);
 
-  const historyText =
-    history.length > 0
-      ? history
-          .slice(-5)
-          .map((h) => `Q: ${h.question}\nA: ${h.answers.slice(0, 3).join(" / ")}`)
-          .join("\n\n")
-      : "없음";
+  const historyBlock = history.length > 0
+    ? history.slice(-5).map((h) => `Q: ${h.question}\nA: ${h.answers.slice(0, 3).join(" / ")}`).join("\n\n")
+    : "";
 
-  const humanQText =
-    humanQuestions.length > 0
-      ? humanQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")
-      : "없음";
+  const archiveBlock = formatArchiveSamples(archiveSamples);
 
-  const prompt = `당신은 20대 후반~30대 한국인으로 친구들과 익명 게임 중이야.
-지금 게임에 쓸 질문 하나를 만들어야 해.
+  const humanQBlock = humanQuestions.length > 0
+    ? humanQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")
+    : "";
 
-이번 라운드에 다른 사람들이 낸 질문:
-${humanQText}
+  const templateBlock = pickTemplates(4).join("\n");
 
-이전 대화 분위기 참고:
-${historyText}
+  const system = `You are a Korean person in your late 20s playing an anonymous Q&A game with friends.
+You must generate ONE question in Korean for the game.
 
-참고할 질문 형식 예시:
-${template}
+Your job is to sound exactly like a real Korean person texting friends — natural, casual, sometimes funny.
+Study the real examples below carefully and match their tone, length, and vibe.
+Do NOT copy them. Create something new but in the same style.
+Output ONLY the question text, nothing else.`;
 
-규칙:
-- 반드시 명제형이나 if형으로 써라 (예: "나는 ~한 편" "만약 ~라면 ~임" "~가 없으면 못 삼" "나는 ~하는 사람이 좋음")
-- "너는 ~해?" "~야?" "~어?" 같은 직접 질문 절대 금지
-- 특수기호(! , ? 등) 절대 금지
-- AI처럼 격식체나 영어 쓰지 마
-- 30자 이내
-- 질문 텍스트만 출력
+  let user = "";
 
-질문:`;
+  if (archiveBlock) {
+    user += `[Real examples from past games]\n${archiveBlock}\n\n`;
+  }
+
+  if (historyBlock) {
+    user += `[Current game history]\n${historyBlock}\n\n`;
+  }
+
+  if (humanQBlock) {
+    user += `[Other players' questions this round — avoid overlap]\n${humanQBlock}\n\n`;
+  }
+
+  user += `[Template styles for reference — you don't have to follow these]\n${templateBlock}\n\n`;
+  user += `Now write one question:`;
 
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
       max_tokens: 80,
-      temperature: 0.92,
+      temperature: 0.95,
     });
     const text = (res.choices[0]?.message?.content || "")
       .trim()
-      .replace(/^["']|["']$/g, "")
-      .replace(/[!,?]/g, "");
+      .replace(/^["']|["']$/g, "");
     return text || _fallbackQuestion();
   } catch (e) {
     console.error("[AI generateQuestion]", e?.message);
@@ -133,50 +164,56 @@ async function generateAIAnswer({ roomId, roundId, question, allQuestions, curre
   const openai = getOpenAI();
   if (!openai) return _fallbackAnswer();
 
-  const prevHistory = await getRoomHistory(roomId, roundId);
-  const currentRoundHistory = await getRoomHistory(roomId, roundId, {
-    includeCurrentRound: true,
-    beforeOrderNo: currentQuestionOrderNo ?? 999,
-  });
+  const [prevHistory, currentRoundHistory, archiveSamples] = await Promise.all([
+    getRoomHistory(roomId, roundId),
+    getRoomHistory(roomId, roundId, {
+      includeCurrentRound: true,
+      beforeOrderNo: currentQuestionOrderNo ?? 999,
+    }),
+    getArchiveSamples(5),
+  ]);
 
   const combined = [...prevHistory, ...currentRoundHistory].slice(-8);
 
-  const historyText =
-    combined.length > 0
-      ? combined
-          .map((h) => `Q: ${h.question}\nA: ${h.answers.slice(0, 4).join(" / ")}`)
-          .join("\n\n")
-      : "없음";
+  const historyBlock = combined.length > 0
+    ? combined.map((h) => `Q: ${h.question}\nA: ${h.answers.slice(0, 4).join(" / ")}`).join("\n\n")
+    : "";
 
-  const prompt = `당신은 20대 후반~30대 한국인으로 친구들과 익명 게임 중이야.
-아래 질문에 솔직하게 짧게 답해야 해.
+  const archiveBlock = formatArchiveSamples(archiveSamples);
 
-질문: ${question}
+  const system = `You are a Korean person in your late 20s playing an anonymous Q&A game with friends.
+You must answer the given question in Korean.
 
-이전 대화 분위기 (말투 참고용):
-${historyText}
+Study the real examples below and match their tone, length, and style exactly.
+Real people write short, casual answers like texting on KakaoTalk.
+If the question asks about something you can't know, just wing it naturally.
+Output ONLY the answer text, nothing else.`;
 
-규칙:
-- "~함" "~인듯" "~임" "~인 것 같음" 같은 짧은 구어체로 써라
-- 특수기호(! , ? 등) 절대 금지
-- 영어나 격식체 절대 금지
-- 질문이 내부 정보가 필요하거나 모르는 내용이면 "글쎄" "모르겠음" "뭐" 처럼 두루뭉술하게
-- 카톡 단답처럼 짧게 (15자 이내)
-- 답변 텍스트만 출력
+  let user = "";
 
-답변:`;
+  if (archiveBlock) {
+    user += `[Real examples from past games]\n${archiveBlock}\n\n`;
+  }
+
+  if (historyBlock) {
+    user += `[Current game history]\n${historyBlock}\n\n`;
+  }
+
+  user += `[Question to answer]\n${question}\n\nYour answer:`;
 
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
       max_tokens: 60,
-      temperature: 0.92,
+      temperature: 0.95,
     });
     const text = (res.choices[0]?.message?.content || "")
       .trim()
-      .replace(/^["']|["']$/g, "")
-      .replace(/[!,]/g, "");
+      .replace(/^["']|["']$/g, "");
     return text || _fallbackAnswer();
   } catch (e) {
     console.error("[AI generateAnswer]", e?.message);

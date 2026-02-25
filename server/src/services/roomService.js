@@ -3,6 +3,7 @@ const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
 const { Room, Player, User, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
+const { archiveHumanQa } = require("./qaArchiveService");
 const { env } = require("../config/env");
 
 // AI 플레이어용 한국 닉네임 풀
@@ -303,6 +304,7 @@ async function transferHostIfNeeded(roomId) {
 
     if (!nextHost) {
       // 아무도 없으면 방 폭파
+      await archiveHumanQa(roomId);
       await Room.destroy({ where: { id: roomId }, transaction: t });
       return null;
     }
@@ -352,6 +354,7 @@ async function leaveRoom({ roomId, playerId }) {
     // 인간 플레이어가 없으면 방 폭파 (AI만 남은 경우 포함)
     const humanRemaining = remaining.filter((p) => !p.is_ai);
     if (humanRemaining.length === 0) {
+      await archiveHumanQa(roomId);
       await Room.destroy({ where: { id: roomId }, transaction: t });
       return { room: null, room_deleted: true };
     }

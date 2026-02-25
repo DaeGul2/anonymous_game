@@ -8,6 +8,7 @@ const QuestionModel = require("./Question");
 const AnswerModel = require("./Answer");
 const UserModel = require("./User");
 const QuestionHeartModel = require("./QuestionHeart");
+const QaArchiveModel = require("./QaArchive");
 
 const Room = RoomModel(sequelize);
 const Player = PlayerModel(sequelize);
@@ -16,6 +17,7 @@ const Question = QuestionModel(sequelize);
 const Answer = AnswerModel(sequelize);
 const User = UserModel(sequelize);
 const QuestionHeart = QuestionHeartModel(sequelize);
+const QaArchive = QaArchiveModel(sequelize);
 
 // ===== Associations =====
 User.hasMany(Player, { foreignKey: "user_id", as: "players", onDelete: "CASCADE" });
@@ -62,4 +64,5 @@ module.exports = {
   Answer,
   User,
   QuestionHeart,
+  QaArchive,
 };
