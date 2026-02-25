@@ -17,6 +17,7 @@ export const EVENTS = {
   ROOM_LEAVE_RES: "room:leave:res",
   ROOM_UPDATE: "room:update",
   ROOM_DESTROYED: "room:destroyed",
+  ROOM_KICKED: "room:kicked",
 
   GAME_START: "game:start",
   GAME_START_RES: "game:start:res",

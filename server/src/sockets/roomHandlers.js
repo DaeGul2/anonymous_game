@@ -22,6 +22,17 @@ function getUserId(socket) {
   return socket.request.session?.passport?.user || null;
 }
 
+// 같은 유저의 이전 소켓을 킥 (다른 기기 동시 접속 방지)
+function kickPrevSocket(io, prevSocketId, roomCode) {
+  if (!prevSocketId) return;
+  const old = io.sockets.sockets.get(prevSocketId);
+  if (!old) return;
+  old.emit("room:kicked", { ok: true, message: "다른 기기에서 접속하여 연결이 종료됩니다" });
+  old.leave(roomCode);
+  detachSocket(prevSocketId);
+  old.disconnect(true);
+}
+
 module.exports = (io, socket) => {
   // 1) 방 목록
   socket.on("room:list", async () => {
@@ -46,7 +57,8 @@ module.exports = (io, socket) => {
 
       socket.join(room.code);
       touchRoom(room.code, room.id);
-      attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      const prevSid = attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      kickPrevSocket(io, prevSid, room.code);
 
       const state = await getRoomState(room.id);
       ok(socket, "room:create:res", { state });
@@ -66,7 +78,8 @@ module.exports = (io, socket) => {
 
       socket.join(room.code);
       touchRoom(room.code, room.id);
-      attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      const prevSid = attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      kickPrevSocket(io, prevSid, room.code);
 
       const state = await getRoomState(room.id);
       ok(socket, "room:join:res", { state });
@@ -86,7 +99,8 @@ module.exports = (io, socket) => {
 
       socket.join(room.code);
       touchRoom(room.code, room.id);
-      attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      const prevSid = attachSocket({ socketId: socket.id, userId, roomCode: room.code, playerId: player.id, roomId: room.id });
+      kickPrevSocket(io, prevSid, room.code);
 
       const state = await getRoomState(room.id);
       ok(socket, "room:rejoin:res", { state });

@@ -93,10 +93,30 @@ export const useRoomStore = create((set, get) => ({
 
     s.on(EVENTS.ROOM_CREATE_RES, applyState);
     s.on(EVENTS.ROOM_JOIN_RES, applyState);
-    s.on(EVENTS.ROOM_REJOIN_RES, applyState);
     s.on(EVENTS.ROOM_UPDATE, applyState);
 
+    // rejoin 실패는 신규 유저에겐 정상 — "방을 찾을 수 없음"만 에러 처리
+    s.on(EVENTS.ROOM_REJOIN_RES, (res) => {
+      if (!res?.ok) {
+        if (res?.message?.includes("방을 찾을 수 없음")) {
+          set({ error: res.message });
+        }
+        return;
+      }
+      if (res.state) {
+        if (res.state.room?.code) {
+          try { localStorage.setItem("ag:last_room", res.state.room.code); } catch {}
+        }
+        set({ state: res.state, error: "" });
+      }
+    });
+
     s.on(EVENTS.ROOM_DESTROYED, () => set({ state: null }));
+
+    // 다른 기기에서 같은 계정으로 접속 시 킥
+    s.on(EVENTS.ROOM_KICKED, (data) => {
+      set({ state: null, error: data?.message || "다른 기기에서 접속됨" });
+    });
 
     // ====== 질문 제출 응답 ======
     s.on(EVENTS.GAME_SUBMIT_Q_RES, (res) => {

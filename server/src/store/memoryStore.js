@@ -32,12 +32,16 @@ function touchRoom(roomCode, roomId) {
 function attachSocket({ socketId, userId, roomCode, playerId, roomId }) {
   sockets.set(socketId, { userId, roomCode, playerId });
 
+  let prevSocketId = null;
   if (roomCode) {
     const r = ensureRoomRuntime(roomCode);
     if (roomId) r.roomId = roomId;
+    const old = r.socketsByUserId.get(userId);
+    if (old && old !== socketId) prevSocketId = old;
     r.socketsByUserId.set(userId, socketId);
     r.updatedAt = Date.now();
   }
+  return prevSocketId;
 }
 
 function detachSocket(socketId) {
