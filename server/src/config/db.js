@@ -17,7 +17,7 @@ async function initDb() {
   // 모델/관계 로드(이거 안 하면 sync 때 관계 반영이 안 됨)
   require("../models");
 
-  await sequelize.sync({ alter: true });
+  // await sequelize.sync({ alter: true });
 }
 
 module.exports = { sequelize, initDb };
