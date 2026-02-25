@@ -5,6 +5,7 @@ import { QUESTION_TEMPLATES } from "../constants/questionTemplates";
 
 export default function QuestionInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal }) {
   const [draft, setDraft] = useState(savedText || "");
+  const [answerType, setAnswerType] = useState("free");
   const [editing, setEditing] = useState(!submitted);
   const [pending, setPending] = useState(false);
   const timerRef = useRef(null);
@@ -27,7 +28,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, d
   const handleSubmit = () => {
     if (!canEdit || pending || !draft.trim()) return;
     setPending(true);
-    onSave(draft.trim());
+    onSave(draft.trim(), answerType);
     timerRef.current = setTimeout(() => setPending(false), 800);
   };
 
@@ -138,6 +139,47 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, d
               </Box>
             ))}
           </Box>
+        </Box>
+      )}
+
+      {/* 답변 타입 토글 */}
+      {canEdit && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", mb: 0.8 }}>
+            🎯 답변 형식 선택
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            {[
+              { value: "free", label: "자유 답변" },
+              { value: "yesno", label: "예 · 아니오" },
+            ].map((opt) => (
+              <Box
+                key={opt.value}
+                onClick={() => setAnswerType(opt.value)}
+                sx={{
+                  flex: 1,
+                  py: 1,
+                  borderRadius: 999,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  userSelect: "none",
+                  transition: "all 0.15s ease",
+                  background: answerType === opt.value
+                    ? "linear-gradient(135deg, rgba(124,58,237,0.18), rgba(236,72,153,0.12))"
+                    : "rgba(0,0,0,0.04)",
+                  border: answerType === opt.value
+                    ? "1.5px solid rgba(124,58,237,0.40)"
+                    : "1.5px solid rgba(0,0,0,0.08)",
+                  color: answerType === opt.value ? "var(--c-primary)" : "var(--text-2)",
+                  "&:active": { transform: "scale(0.96)" },
+                }}
+              >
+                {opt.label}
+              </Box>
+            ))}
+          </Stack>
         </Box>
       )}
 

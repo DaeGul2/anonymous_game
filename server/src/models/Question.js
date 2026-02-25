@@ -19,6 +19,8 @@ module.exports = (sequelize) => {
       order_no: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
 
       is_used: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+
+      answer_type: { type: DataTypes.ENUM("free", "yesno"), allowNull: false, defaultValue: "free" },
     },
     {
       tableName: "questions",

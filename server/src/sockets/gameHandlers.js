@@ -23,12 +23,12 @@ module.exports = (io, socket) => {
     }
   });
 
-  socket.on("game:submitQuestion", async ({ text } = {}) => {
+  socket.on("game:submitQuestion", async ({ text, answer_type } = {}) => {
     try {
       const sess = getSocketSession(socket.id);
       if (!sess?.roomCode || !sess?.playerId) return fail(socket, "game:submitQuestion:res", "세션 없음");
 
-      await game.submitQuestion(io, { roomCode: sess.roomCode, playerId: sess.playerId, text });
+      await game.submitQuestion(io, { roomCode: sess.roomCode, playerId: sess.playerId, text, answer_type });
       ok(socket, "game:submitQuestion:res", {});
     } catch (e) {
       fail(socket, "game:submitQuestion:res", e?.message || "submitQuestion failed");

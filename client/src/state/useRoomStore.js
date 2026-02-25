@@ -333,12 +333,13 @@ export const useRoomStore = create((set, get) => ({
     }
   },
 
-  gameSubmitQuestion: (text) => {
+  gameSubmitQuestion: (text, answer_type) => {
     const t = String(text || "").trim();
+    const at = answer_type === "yesno" ? "yesno" : "free";
     set((st) => ({
       game: { ...st.game, question_pending_text: t },
     }));
-    connectSocket().emit(EVENTS.GAME_SUBMIT_Q, { text: t });
+    connectSocket().emit(EVENTS.GAME_SUBMIT_Q, { text: t, answer_type: at });
   },
 
   gameSubmitAnswer: (text) => {

@@ -92,10 +92,13 @@ function pickTemplates(count = 4) {
   return shuffled.slice(0, count);
 }
 
-// AI 질문 1개 생성
+// AI 질문 1개 생성 — { text, answer_type } 반환
 async function generateAIQuestion({ roomId, roundId, humanQuestions }) {
+  // answer_type 랜덤 배정 (free 70% / yesno 30%)
+  const answer_type = Math.random() < 0.3 ? "yesno" : "free";
+
   const openai = getOpenAI();
-  if (!openai) return _fallbackQuestion();
+  if (!openai) return { text: _fallbackQuestion(answer_type), answer_type };
 
   const [history, archiveSamples] = await Promise.all([
     getRoomHistory(roomId, roundId),
@@ -114,12 +117,16 @@ async function generateAIQuestion({ roomId, roundId, humanQuestions }) {
 
   const templateBlock = pickTemplates(4).join("\n");
 
+  const yesnoRule = answer_type === "yesno"
+    ? "\nIMPORTANT: The question MUST be answerable with only 예(yes) or 아니오(no). Do not ask open-ended questions."
+    : "";
+
   const system = `You are a Korean person in your late 20s playing an anonymous Q&A game with friends.
 You must generate ONE question in Korean for the game.
 
 Your job is to sound exactly like a real Korean person texting friends — natural, casual, sometimes funny.
 Study the real examples below carefully and match their tone, length, and vibe.
-Do NOT copy them. Create something new but in the same style.
+Do NOT copy them. Create something new but in the same style.${yesnoRule}
 Output ONLY the question text, nothing else.`;
 
   let user = "";
@@ -152,15 +159,20 @@ Output ONLY the question text, nothing else.`;
     const text = (res.choices[0]?.message?.content || "")
       .trim()
       .replace(/^["']|["']$/g, "");
-    return text || _fallbackQuestion();
+    return { text: text || _fallbackQuestion(answer_type), answer_type };
   } catch (e) {
     console.error("[AI generateQuestion]", e?.message);
-    return _fallbackQuestion();
+    return { text: _fallbackQuestion(answer_type), answer_type };
   }
 }
 
 // AI 답변 1개 생성
-async function generateAIAnswer({ roomId, roundId, question, allQuestions, currentQuestionOrderNo }) {
+async function generateAIAnswer({ roomId, roundId, question, allQuestions, currentQuestionOrderNo, answer_type }) {
+  // yesno 질문은 GPT 호출 없이 랜덤 선택
+  if (answer_type === "yesno") {
+    return Math.random() < 0.5 ? "예" : "아니오";
+  }
+
   const openai = getOpenAI();
   if (!openai) return _fallbackAnswer();
 
@@ -221,7 +233,18 @@ Output ONLY the answer text, nothing else.`;
   }
 }
 
-function _fallbackQuestion() {
+function _fallbackQuestion(answer_type) {
+  if (answer_type === "yesno") {
+    const yesnoFallbacks = [
+      "나는 지금 행복한 편이야?",
+      "첫사랑 아직도 생각나?",
+      "지금 짝사랑하는 사람 있어?",
+      "내일 지구 멸망하면 후회되는 거 있어?",
+      "요즘 잠을 잘 자고 있어?",
+      "지금 이 자리에 있는 사람 중에 연락처 교환하고 싶은 사람 있어?",
+    ];
+    return yesnoFallbacks[Math.floor(Math.random() * yesnoFallbacks.length)];
+  }
   const fallbacks = [
     "나는 요즘 이상하게 감성적인 편",
     "솔직히 지금 제일 고민되는 건 돈",

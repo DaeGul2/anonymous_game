@@ -39,6 +39,7 @@ async function archiveHumanQa(roomId) {
       .map((a) => ({
         question_text: a.question.text.trim(),
         answer_text: a.text.trim(),
+        answer_type: a.question.answer_type || "free",
       }));
 
     if (rows.length > 0) {

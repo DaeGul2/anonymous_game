@@ -361,10 +361,10 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myAnswerSubmitted, aKey]);
 
-  const handleSaveQuestion = (text) => {
+  const handleSaveQuestion = (text, answer_type) => {
     if (!code) return;
     lsSet(qKey, { text: String(text ?? ""), ts: Date.now() });
-    gameSubmitQuestion(text);
+    gameSubmitQuestion(text, answer_type);
   };
 
   const handleSaveAnswer = (text) => {
@@ -641,6 +641,22 @@ export default function GamePage() {
                 >
                   지금 질문
                 </Typography>
+                {game.current_question?.answer_type === "yesno" && (
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.2,
+                      borderRadius: 999,
+                      background: "rgba(59,130,246,0.12)",
+                      border: "1px solid rgba(59,130,246,0.25)",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "#3B82F6",
+                    }}
+                  >
+                    예/아니오
+                  </Box>
+                )}
               </Stack>
 
               <Typography
@@ -733,6 +749,7 @@ export default function GamePage() {
             submitted={answerSubmittedDisplay}
             onSave={handleSaveAnswer}
             deadlineExpiredSignal={deadlineExpiredSignal}
+            answerType={game.current_question?.answer_type || "free"}
           />
         </>
       )}

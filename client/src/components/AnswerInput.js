@@ -2,11 +2,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 
-export default function AnswerInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal }) {
+export default function AnswerInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal, answerType }) {
   const [draft, setDraft] = useState(savedText || "");
   const [editing, setEditing] = useState(!submitted);
   const [pending, setPending] = useState(false);
   const timerRef = useRef(null);
+
+  const isYesNo = answerType === "yesno";
 
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
@@ -26,6 +28,13 @@ export default function AnswerInput({ canEdit, savedText, submitted, onSave, dea
     if (!canEdit || pending || !draft.trim()) return;
     setPending(true);
     onSave(draft.trim());
+    timerRef.current = setTimeout(() => setPending(false), 800);
+  };
+
+  const handleYesNo = (value) => {
+    if (!canEdit || pending) return;
+    setPending(true);
+    onSave(value);
     timerRef.current = setTimeout(() => setPending(false), 800);
   };
 
@@ -65,7 +74,7 @@ export default function AnswerInput({ canEdit, savedText, submitted, onSave, dea
             </Typography>
           </Box>
         </Stack>
-        {canEdit && (
+        {canEdit && !isYesNo && (
           <Button
             size="small" variant="text"
             onClick={() => { setEditing(true); setDraft(savedText || draft); }}
@@ -74,6 +83,44 @@ export default function AnswerInput({ canEdit, savedText, submitted, onSave, dea
             다시 쓰기
           </Button>
         )}
+      </Paper>
+    );
+  }
+
+  // yesno 모드: "예" / "아니오" 버튼만 표시
+  if (isYesNo) {
+    return (
+      <Paper className="glassCard section" sx={{ p: 2.2, animation: "slideUp 0.4s var(--spring) both" }}>
+        <Typography sx={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", mb: 2, textAlign: "center" }}>
+          🗳️ 답변을 선택하세요
+        </Typography>
+        <Stack direction="row" spacing={1.5}>
+          {[
+            { value: "예", color: "#3B82F6", gradient: "linear-gradient(135deg, #3B82F6, #60A5FA)" },
+            { value: "아니오", color: "#EF4444", gradient: "linear-gradient(135deg, #EF4444, #F87171)" },
+          ].map((opt) => (
+            <Button
+              key={opt.value}
+              fullWidth
+              variant="contained"
+              disabled={!canEdit || pending}
+              onClick={() => handleYesNo(opt.value)}
+              sx={{
+                fontWeight: 900,
+                fontSize: 18,
+                borderRadius: 999,
+                py: 2,
+                background: opt.gradient,
+                boxShadow: `0 4px 20px ${opt.color}40`,
+                "&:active": { transform: "scale(0.95)" },
+                "&:disabled": { opacity: 0.45 },
+                transition: "transform 0.12s ease",
+              }}
+            >
+              {opt.value}
+            </Button>
+          ))}
+        </Stack>
       </Paper>
     );
   }

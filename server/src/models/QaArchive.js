@@ -10,6 +10,8 @@ module.exports = (sequelize) => {
       question_text: { type: DataTypes.STRING(500), allowNull: false },
       answer_text:   { type: DataTypes.STRING(1000), allowNull: false },
 
+      answer_type: { type: DataTypes.ENUM("free", "yesno"), allowNull: false, defaultValue: "free" },
+
       // 벡터DB 동기화 추적 (Zilliz 연동 시 WHERE embedded_at IS NULL)
       embedded_at: { type: DataTypes.DATE, allowNull: true, defaultValue: null },
     },

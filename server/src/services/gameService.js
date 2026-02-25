@@ -31,7 +31,7 @@ async function _generateAndSaveAIQuestions(room, roundId) {
     });
     if (exists) continue;
 
-    const text = await aiService.generateAIQuestion({
+    const aiResult = await aiService.generateAIQuestion({
       roomId: room.id,
       roundId,
       humanQuestions: humanQTexts,
@@ -40,7 +40,8 @@ async function _generateAndSaveAIQuestions(room, roundId) {
     await Question.create({
       room_id: room.id,
       round_id: roundId,
-      text,
+      text: aiResult.text,
+      answer_type: aiResult.answer_type || "free",
       submitted_by_player_id: aiPlayer.id,
       submitted_at: new Date(),
       order_no: 0,
@@ -74,7 +75,8 @@ async function _generateAndSaveAIAnswers(room, game) {
       roundId,
       question: question.text,
       allQuestions: allQTexts,
-      currentQuestionOrderNo: question.order_no, // 현재 라운드에서 이 질문 이전에 공개된 Q&A를 context로 포함
+      currentQuestionOrderNo: question.order_no,
+      answer_type: question.answer_type || "free",
     });
 
     await Answer.create({
@@ -179,7 +181,7 @@ async function startRound(io, roomCode) {
   });
 }
 
-async function submitQuestion(io, { roomCode, playerId, text }) {
+async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) throw new Error("방을 찾을 수 없음");
   if (room.phase !== "question_submit") throw new Error("지금은 질문 입력 시간이 아님");
@@ -193,12 +195,15 @@ async function submitQuestion(io, { roomCode, playerId, text }) {
   if (!content) throw new Error("질문을 입력해줘");
   if (content.length > 500) throw new Error("질문이 너무 김(최대 500자)");
 
+  const validType = answer_type === "yesno" ? "yesno" : "free";
+
   const existing = await Question.findOne({
     where: { round_id: roundId, submitted_by_player_id: playerId },
   });
 
   if (existing) {
     existing.text = content;
+    existing.answer_type = validType;
     existing.submitted_at = new Date();
     await existing.save();
   } else {
@@ -206,6 +211,7 @@ async function submitQuestion(io, { roomCode, playerId, text }) {
       room_id: room.id,
       round_id: roundId,
       text: content,
+      answer_type: validType,
       submitted_by_player_id: playerId,
       submitted_at: new Date(),
       order_no: 0,
@@ -312,7 +318,7 @@ async function endQuestionSubmit(io, roomCode) {
   io.to(room.code).emit("game:ask", {
     ok: true,
     round_no: room.current_round_no,
-    question: { id: first.id, text: first.text },
+    question: { id: first.id, text: first.text, answer_type: first.answer_type || "free" },
     deadline_at: new Date(room.phase_deadline_at).toISOString(),
   });
 
@@ -431,7 +437,7 @@ async function endAnswer(io, roomCode) {
     ok: true,
     round_no: room.current_round_no,
     is_last: isLast,
-    question: { id: question.id, text: question.text },
+    question: { id: question.id, text: question.text, answer_type: question.answer_type || "free" },
     answers: shuffle(
       answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
     ),
@@ -537,7 +543,7 @@ async function nextQuestionOrEnd(io, roomCode) {
   io.to(room.code).emit("game:ask", {
     ok: true,
     round_no: room.current_round_no,
-    question: { id: q.id, text: q.text },
+    question: { id: q.id, text: q.text, answer_type: q.answer_type || "free" },
     deadline_at: deadline.toISOString(),
   });
 
