@@ -2,10 +2,8 @@
 const { env } = require("../config/env");
 const { Question, Answer, Round, QaArchive } = require("../models");
 
-// 참고용 질문 형식 (강제 아님)
+// 참고용 질문 형식 (강제 아님) — "우리 중 ~인 사람" 류는 AI가 쓰면 안 되므로 제외
 const QUESTION_TEMPLATES = [
-  "우리 중 ___ 할 것 같은 사람은",
-  "이 방에서 제일 ___ 할 것 같은 사람은",
   "솔직히 ___ 은 좀 무서운 편",
   "내가 가장 후회하는 건 ___",
   "___가 없으면 못 살 것 같음",
@@ -16,9 +14,7 @@ const QUESTION_TEMPLATES = [
   "___ vs ___ 나는 이게 더 좋음",
   "살면서 가장 창피했던 순간은 ___",
   "만약 내가 ___ 라면 ___ 했을 것 같음",
-  "우리 중 ___ 를 가장 잘 할 것 같은 사람은",
   "지금 당장 ___ 하고 싶음",
-  "나는 만약 싱글이라면 이 자리에 꼬시고 싶은 사람이 있음",
   "나는 ___ 하는 사람이 좋은 편",
   "사실 ___ 은 아직도 이해 못 하겠음",
   "나는 친구보다 연애가 더 중요한 편",
@@ -26,23 +22,36 @@ const QUESTION_TEMPLATES = [
   "요즘 들어 ___ 이 생각보다 소중하다는 걸 느낌",
 ];
 
-// qa_archives에서 랜덤 샘플 가져오기
+// qa_archives에서 랜덤 샘플 뽑고 인기순 정렬
 async function getArchiveSamples(count = 5) {
   try {
+    // 넉넉하게 랜덤으로 뽑고
     const rows = await QaArchive.findAll({
       order: QaArchive.sequelize.random(),
-      limit: count,
+      limit: count * 3,
     });
-    return rows.map((r) => ({ question: r.question_text, answer: r.answer_text }));
+    // popularity_score 내림차순 정렬 후 상위 count개
+    rows.sort((a, b) => (b.popularity_score || 0) - (a.popularity_score || 0));
+    return rows.slice(0, count).map((r) => ({
+      question: r.question_text,
+      answer: r.answer_text,
+      score: r.popularity_score || 0,
+      hearts: r.heart_count || 0,
+    }));
   } catch {
     return [];
   }
 }
 
-// 아카이브 샘플을 텍스트로 포맷
+// 아카이브 샘플을 텍스트로 포맷 (인기 질문에 하트 표시)
 function formatArchiveSamples(samples) {
   if (samples.length === 0) return "";
-  return samples.map((s) => `Q: ${s.question}\nA: ${s.answer}`).join("\n\n");
+  return samples
+    .map((s) => {
+      const heartMark = s.hearts > 0 ? ` (${s.hearts}hearts)` : "";
+      return `Q: ${s.question}${heartMark}\nA: ${s.answer}`;
+    })
+    .join("\n\n");
 }
 
 // 방의 Q&A 이력을 { question, answers[] } 배열로 반환
@@ -127,12 +136,19 @@ You must generate ONE question in Korean for the game.
 Your job is to sound exactly like a real Korean person texting friends — natural, casual, sometimes funny.
 Study the real examples below carefully and match their tone, length, and vibe.
 Do NOT copy them. Create something new but in the same style.${yesnoRule}
+
+CRITICAL RULES:
+- NEVER ask questions about "우리 중", "이 방에서 누가", "여기 있는 사람 중" or anything that requires knowing who the other players are. You do NOT know them. These questions break the game.
+- NEVER overuse ~ (tilde) or ! (exclamation marks). Real people rarely spam these.
+- Write like you're texting on KakaoTalk: occasional typos, skipped spaces, abbreviations (ㅋㅋ, ㄹㅇ, ㅇㅇ, 걍). Perfect grammar looks like AI.
+- Examples of natural writing: "솔직히나는", "몰겟음", "잇음", "그건좀"
+
 Output ONLY the question text, nothing else.`;
 
   let user = "";
 
   if (archiveBlock) {
-    user += `[Real examples from past games]\n${archiveBlock}\n\n`;
+    user += `[Real examples from past games — sorted by popularity]\n${archiveBlock}\n\n`;
   }
 
   if (historyBlock) {
@@ -198,7 +214,13 @@ You must answer the given question in Korean.
 
 Study the real examples below and match their tone, length, and style exactly.
 Real people write short, casual answers like texting on KakaoTalk.
-If the question asks about something you can't know, just wing it naturally.
+
+CRITICAL RULES:
+- NEVER make up names of people. You do NOT know who is in this game. If the question asks to name someone (e.g. "우리 중 ~인 사람"), give a vague/dodging answer like a shy person would: "딱히 몰겟음", "다ㅋㅋ", "패스", "글쎄 몰루", "있긴한데 말 안함".
+- NEVER overuse ~ (tilde) or ! (exclamation marks). Real people rarely spam these.
+- Write like you're texting on KakaoTalk: occasional typos, skipped spaces, abbreviations (ㅋㅋ, ㄹㅇ, ㅇㅇ, 걍). Perfect grammar looks like AI.
+- Examples of natural writing: "솔직히나는", "몰겟음", "잇음", "그건좀"
+
 Output ONLY the answer text, nothing else.`;
 
   let user = "";
@@ -241,7 +263,6 @@ function _fallbackQuestion(answer_type) {
       "지금 짝사랑하는 사람 있어?",
       "내일 지구 멸망하면 후회되는 거 있어?",
       "요즘 잠을 잘 자고 있어?",
-      "지금 이 자리에 있는 사람 중에 연락처 교환하고 싶은 사람 있어?",
     ];
     return yesnoFallbacks[Math.floor(Math.random() * yesnoFallbacks.length)];
   }
@@ -251,7 +272,6 @@ function _fallbackQuestion(answer_type) {
     "죽기 전에 꼭 세계여행은 해봐야 함",
     "나는 혼자 있는 게 좋을 때가 더 많음",
     "만약 로또 당첨되면 아무한테도 말 안 할 것 같음",
-    "나는 만약 싱글이라면 이 자리에 꼬시고 싶은 사람이 있음",
   ];
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }

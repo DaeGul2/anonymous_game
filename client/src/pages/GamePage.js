@@ -426,8 +426,12 @@ export default function GamePage() {
 
   const stickyTop = "calc(var(--header-h) + env(safe-area-inset-top) + 10px)";
 
-  // 현재 질문 하트 정보
+  // 현재 질문 하트 정보 (ask 페이즈)
   const heartInfo = game.hearts_by_qid?.[currentQid] || { count: 0, hearted: false };
+
+  // reveal 질문 하트 정보
+  const revealQid = game.reveal?.question?.id || "";
+  const revealHeartInfo = game.hearts_by_qid?.[revealQid] || { count: 0, hearted: false };
 
   return (
     <Box
@@ -762,6 +766,81 @@ export default function GamePage() {
             question={game.reveal?.question}
             answers={game.reveal?.answers}
           />
+
+          {/* 하트 버튼 (reveal 페이즈) */}
+          {revealQid && (
+            <Paper
+              className="glassCard section"
+              sx={{
+                p: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+                animation: "slideUp 0.45s var(--spring) both 0.3s",
+                background: revealHeartInfo.hearted
+                  ? "linear-gradient(135deg, rgba(239,68,68,0.08), rgba(244,114,182,0.06)) !important"
+                  : undefined,
+                border: revealHeartInfo.hearted
+                  ? "1px solid rgba(239,68,68,0.20) !important"
+                  : undefined,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "rgba(17,24,39,0.55)",
+                  lineHeight: 1.35,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                이 질문 괜찮았으면 하트 눌러줘요
+              </Typography>
+              <Box
+                onClick={() => gameHeartQuestion(revealQid)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                  px: 2,
+                  py: 1,
+                  borderRadius: 999,
+                  cursor: "pointer",
+                  background: revealHeartInfo.hearted
+                    ? "rgba(239,68,68,0.12)"
+                    : "rgba(255,255,255,0.55)",
+                  border: revealHeartInfo.hearted
+                    ? "1.5px solid rgba(239,68,68,0.35)"
+                    : "1.5px solid rgba(0,0,0,0.10)",
+                  transition: "all 0.18s ease",
+                  userSelect: "none",
+                  "&:active": { transform: "scale(0.90)" },
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 20,
+                    lineHeight: 1,
+                    filter: revealHeartInfo.hearted ? "none" : "grayscale(1)",
+                    transition: "filter 0.2s ease",
+                  }}
+                >
+                  ❤️
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 900,
+                    color: revealHeartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.35)",
+                    lineHeight: 1,
+                  }}
+                >
+                  {revealHeartInfo.count || 0}
+                </Typography>
+              </Box>
+            </Paper>
+          )}
 
           <Paper className="glassCard section" sx={{ p: 2 }}>
             {isHost ? (
