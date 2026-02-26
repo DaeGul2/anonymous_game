@@ -234,7 +234,8 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
     });
     if (humanSubmitted >= humanPlayers.length) {
       clearTimers(room.code, ["question_submit_end"]);
-      await endQuestionSubmit(io, room.code);
+      // 논블로킹: 클라이언트 응답 먼저, AI 생성은 백그라운드
+      endQuestionSubmit(io, room.code).catch((e) => console.error("[endQuestionSubmit]", e?.message));
       return;
     }
   } else {
@@ -254,6 +255,11 @@ async function endQuestionSubmit(io, roomCode) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "question_submit") return;
+
+  // 레이스 컨디션 방지: phase를 먼저 전환하여 중복 진입 차단
+  room.phase = "preparing_ask";
+  room.last_activity_at = new Date();
+  await room.save();
 
   const rt = getRoomRuntime(room.code);
   const roundId = rt?.game?.roundId;
@@ -379,7 +385,8 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
     });
     if (humanAnswered >= humanPlayers.length) {
       clearTimers(room.code, ["answer_end"]);
-      await endAnswer(io, room.code);
+      // 논블로킹: 클라이언트 응답 먼저, AI 생성은 백그라운드
+      endAnswer(io, room.code).catch((e) => console.error("[endAnswer]", e?.message));
     } else {
       io.to(room.code).emit("game:answerSubmitted", { ok: true });
     }
@@ -398,6 +405,11 @@ async function endAnswer(io, roomCode) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "ask") return;
+
+  // 레이스 컨디션 방지: phase를 먼저 전환하여 중복 진입 차단
+  room.phase = "preparing_reveal";
+  room.last_activity_at = new Date();
+  await room.save();
 
   const rt = getRoomRuntime(room.code);
   const roundId = rt?.game?.roundId;

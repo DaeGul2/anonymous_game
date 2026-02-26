@@ -132,6 +132,11 @@
   100% { transform: scale(0.5) translateY(20px); opacity: 0; filter: blur(4px); }
 }
 
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.65; }
+}
+
 /* ===== Base ===== */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; }

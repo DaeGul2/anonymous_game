@@ -679,69 +679,50 @@ export default function GamePage() {
               {/* 하트 버튼 */}
               {currentQid && (
                 <Box
+                  onClick={() => gameHeartQuestion(currentQid)}
                   sx={{
-                    mt: 1.2,
-                    pt: 1,
-                    borderTop: "1px solid rgba(255,255,255,0.35)",
+                    mt: 1.5,
+                    p: 1.2,
+                    borderRadius: "var(--radius-lg)",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
+                    justifyContent: "center",
+                    gap: 1.2,
+                    cursor: "pointer",
+                    background: heartInfo.hearted
+                      ? "linear-gradient(135deg, rgba(239,68,68,0.14), rgba(244,114,182,0.10))"
+                      : "rgba(255,255,255,0.50)",
+                    border: heartInfo.hearted
+                      ? "1.5px solid rgba(239,68,68,0.30)"
+                      : "1.5px dashed rgba(239,68,68,0.25)",
+                    transition: "all 0.18s ease",
+                    userSelect: "none",
+                    animation: !heartInfo.hearted ? "subtlePulse 2.5s ease-in-out infinite" : "none",
+                    "&:active": { transform: "scale(0.95)" },
                   }}
                 >
                   <Typography
                     sx={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "rgba(17,24,39,0.42)",
-                      lineHeight: 1.3,
+                      fontSize: 20,
+                      lineHeight: 1,
+                      filter: heartInfo.hearted ? "none" : "grayscale(0.4)",
+                      transition: "filter 0.2s ease",
                     }}
                   >
-                    질문이 마음에 들었나요?{"\n"}하트를 눌러주세요 🥹
+                    {heartInfo.hearted ? "❤️" : "🤍"}
                   </Typography>
-                  <Box
-                    onClick={() => gameHeartQuestion(currentQid)}
+                  <Typography
                     sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 0.3,
-                      px: 1.6,
-                      py: 0.8,
-                      borderRadius: "var(--radius-lg)",
-                      cursor: "pointer",
-                      background: heartInfo.hearted
-                        ? "rgba(239,68,68,0.12)"
-                        : "rgba(255,255,255,0.55)",
-                      border: heartInfo.hearted
-                        ? "1.5px solid rgba(239,68,68,0.35)"
-                        : "1.5px solid rgba(0,0,0,0.10)",
-                      transition: "all 0.18s ease",
-                      userSelect: "none",
-                      "&:active": { transform: "scale(0.88)" },
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: heartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.50)",
+                      letterSpacing: "-0.01em",
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: 22,
-                        lineHeight: 1,
-                        filter: heartInfo.hearted ? "none" : "grayscale(1)",
-                        transition: "filter 0.2s ease",
-                      }}
-                    >
-                      ❤️
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: 12,
-                        fontWeight: 900,
-                        color: heartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.35)",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {heartInfo.count || 0}
-                    </Typography>
-                  </Box>
+                    {heartInfo.hearted
+                      ? `좋은 질문 ${heartInfo.count}`
+                      : "이 질문 좋으면 탭!"}
+                  </Typography>
                 </Box>
               )}
             </Stack>
