@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 
-export default function AnswerInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal, answerType }) {
+export default function AnswerInput({ canEdit, savedText, submitted, onSave, onEdit, deadlineExpiredSignal, answerType }) {
   const [draft, setDraft] = useState(savedText || "");
   const [editing, setEditing] = useState(!submitted);
   const [pending, setPending] = useState(false);
@@ -77,7 +77,7 @@ export default function AnswerInput({ canEdit, savedText, submitted, onSave, dea
         {canEdit && !isYesNo && (
           <Button
             size="small" variant="text"
-            onClick={() => { setEditing(true); setDraft(savedText || draft); }}
+            onClick={() => { setEditing(true); setDraft(savedText || draft); if (onEdit) onEdit(); }}
             sx={{ mt: 1.2, color: "var(--text-2)", fontWeight: 700, fontSize: 12 }}
           >
             다시 쓰기

@@ -19,6 +19,12 @@ export default function HomePage() {
 
   useEffect(() => { initSocket(); }, [initSocket]);
   useEffect(() => { roomList(); }, [roomList]);
+
+  // 10초 간격 자동 갱신
+  useEffect(() => {
+    const id = setInterval(() => roomList(), 10000);
+    return () => clearInterval(id);
+  }, [roomList]);
   useEffect(() => {
     if (state?.room?.code) nav(`/room/${state.room.code}`);
   }, [state, nav]);
@@ -356,15 +362,6 @@ export default function HomePage() {
 
         <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
       </Paper>
-
-      {/* 유저 인사 */}
-      {user && (
-        <Box sx={{ textAlign: "center", pb: 1, animation: "fadeIn 0.6s ease both 0.3s" }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>
-            {user.display_name}님 환영해요 👋
-          </Typography>
-        </Box>
-      )}
 
       <CreateRoomModal open={open} onClose={() => setOpen(false)} onSubmit={onCreate} />
     </Box>

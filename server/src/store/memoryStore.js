@@ -95,6 +95,46 @@ function setGameRuntime(roomCode, patch) {
   return r.game;
 }
 
+// ===== editing 상태 (다시쓰기) =====
+function _ensureEditing(roomCode) {
+  const r = ensureRoomRuntime(roomCode);
+  if (!r.editing) r.editing = { question: new Set(), answer: new Set() };
+  return r.editing;
+}
+
+function addEditing(roomCode, type, playerId) {
+  const e = _ensureEditing(roomCode);
+  if (type === "question") e.question.add(playerId);
+  else if (type === "answer") e.answer.add(playerId);
+}
+
+function removeEditing(roomCode, type, playerId) {
+  const r = rooms.get(roomCode);
+  if (!r?.editing) return;
+  if (type === "question") r.editing.question.delete(playerId);
+  else if (type === "answer") r.editing.answer.delete(playerId);
+}
+
+function getEditingCount(roomCode, type) {
+  const r = rooms.get(roomCode);
+  if (!r?.editing) return 0;
+  if (type === "question") return r.editing.question.size;
+  if (type === "answer") return r.editing.answer.size;
+  return 0;
+}
+
+function clearEditing(roomCode, type) {
+  const r = rooms.get(roomCode);
+  if (!r?.editing) return;
+  if (type) {
+    if (type === "question") r.editing.question.clear();
+    else if (type === "answer") r.editing.answer.clear();
+  } else {
+    r.editing.question.clear();
+    r.editing.answer.clear();
+  }
+}
+
 module.exports = {
   touchRoom,
   attachSocket,
@@ -105,4 +145,8 @@ module.exports = {
   clearRoomTimer,
   setRoomTimer,
   setGameRuntime,
+  addEditing,
+  removeEditing,
+  getEditingCount,
+  clearEditing,
 };

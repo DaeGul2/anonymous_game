@@ -84,6 +84,27 @@ module.exports = (io, socket) => {
     }
   });
 
+  // ===== 다시쓰기 알림 =====
+  socket.on("game:editQuestion", async () => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) return;
+      await game.editQuestion(sess.roomCode, sess.playerId);
+    } catch (e) {
+      console.error("[editQuestion]", e?.message || e);
+    }
+  });
+
+  socket.on("game:editAnswer", async () => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) return;
+      await game.editAnswer(sess.roomCode, sess.playerId);
+    } catch (e) {
+      console.error("[editAnswer]", e?.message || e);
+    }
+  });
+
   // ===== 질문 하트 토글 =====
   socket.on("game:heartQuestion", async ({ question_id } = {}) => {
     try {

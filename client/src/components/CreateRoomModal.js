@@ -25,11 +25,11 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
   const isAiMode = aiSectionOpen && aiCode.trim().length > 0;
 
   const safeMaxPlayers = useMemo(() => {
-    if (isAiMode) return 2; // AI 방은 인간 최대 2명 고정
     const n = Number(maxPlayers);
     if (!Number.isFinite(n)) return 8;
+    if (isAiMode) return Math.max(aiCount + 2, Math.min(20, n));
     return Math.max(2, Math.min(20, n));
-  }, [maxPlayers, isAiMode]);
+  }, [maxPlayers, isAiMode, aiCount]);
 
   const handleAvatarChange = (idx) => {
     setAvatarIdx(idx);
@@ -96,18 +96,15 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
           />
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
-            {/* AI 모드일 때 최대 인원은 고정 2명 표시 */}
-            {!isAiMode && (
-              <TextField
-                label="최대 인원"
-                type="number"
-                value={maxPlayers}
-                onChange={(e) => setMaxPlayers(e.target.value)}
-                fullWidth
-                inputProps={{ min: 2, max: 20 }}
-                sx={inputSx}
-              />
-            )}
+            <TextField
+              label={isAiMode ? `총 인원 (인간 ${safeMaxPlayers - aiCount}명 + AI ${aiCount}명)` : "최대 인원"}
+              type="number"
+              value={maxPlayers}
+              onChange={(e) => setMaxPlayers(e.target.value)}
+              fullWidth
+              inputProps={{ min: isAiMode ? aiCount + 2 : 2, max: 20 }}
+              sx={inputSx}
+            />
             <TextField
               label="방장 닉네임"
               value={nickname}
@@ -158,7 +155,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
                   <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", mb: 0.8 }}>
                     AI 코드를 입력하면 AI 포함 방이 생성됩니다.
                     <br />
-                    AI 방은 최대 인원 2명으로 고정되며, AI 플레이어가 게임에 참여합니다.
+                    총 인원 중 AI가 자리를 차지하고, 나머지가 인간 자리입니다.
                   </Typography>
                   <TextField
                     label="AI 코드"
@@ -195,7 +192,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
                       }}
                     />
                     <Typography sx={{ fontSize: 11, color: "var(--text-3)", mt: 0.5 }}>
-                      인간 최대 2명 + AI {aiCount}명 = 총 {2 + aiCount}명 참여
+                      총 {safeMaxPlayers}명 중 인간 {safeMaxPlayers - aiCount}명 + AI {aiCount}명
                     </Typography>
                   </Box>
                 )}

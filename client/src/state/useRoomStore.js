@@ -376,6 +376,14 @@ export const useRoomStore = create((set, get) => ({
     connectSocket().emit(EVENTS.GAME_SUBMIT_A, { text: t });
   },
 
+  gameEditQuestion: () => {
+    connectSocket().emit(EVENTS.GAME_EDIT_Q);
+  },
+
+  gameEditAnswer: () => {
+    connectSocket().emit(EVENTS.GAME_EDIT_A);
+  },
+
   gameHeartQuestion: (question_id) => {
     connectSocket().emit(EVENTS.GAME_HEART_Q, { question_id });
   },

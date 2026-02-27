@@ -73,8 +73,9 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar, a
     if (aiCount < 1 || aiCount > 3) throw new Error("AI 플레이어는 1~3명");
   }
 
-  // AI 방이면 max = 인간 2 + AI수, 아니면 일반 입력값
-  const effectiveMax = isAiRoom ? 2 + aiCount : (Number(max_players) || 8);
+  // 총 인원 = 유저 설정값 (AI가 그 안에서 자리 차지)
+  const rawMax = Number(max_players) || 8;
+  const effectiveMax = isAiRoom ? Math.max(rawMax, aiCount + 2) : rawMax;
 
   return await sequelize.transaction(async (t) => {
     const room = await Room.create(

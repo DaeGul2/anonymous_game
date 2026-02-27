@@ -234,6 +234,8 @@ export default function GamePage() {
     user,
     gameSubmitQuestion,
     gameSubmitAnswer,
+    gameEditQuestion,
+    gameEditAnswer,
     gameHeartQuestion,
     hostRevealNext,
     hostNextRound,
@@ -625,6 +627,7 @@ export default function GamePage() {
             savedText={questionSavedTextDisplay}
             submitted={questionSubmittedDisplay}
             onSave={handleSaveQuestion}
+            onEdit={gameEditQuestion}
             deadlineExpiredSignal={deadlineExpiredSignal}
           />
         </>
@@ -763,6 +766,7 @@ export default function GamePage() {
             savedText={answerSavedTextDisplay}
             submitted={answerSubmittedDisplay}
             onSave={handleSaveAnswer}
+            onEdit={gameEditAnswer}
             deadlineExpiredSignal={deadlineExpiredSignal}
             answerType={game.current_question?.answer_type || "free"}
           />

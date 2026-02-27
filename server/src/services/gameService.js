@@ -3,7 +3,7 @@ const { Op } = require("sequelize");
 const { env } = require("../config/env");
 const { Room, Player, Round, Question, Answer, QuestionHeart, sequelize } = require("../models");
 const { scheduleAt, clearTimers } = require("./timerService");
-const { setGameRuntime, getRoomRuntime } = require("../store/memoryStore");
+const { setGameRuntime, getRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing } = require("../store/memoryStore");
 const aiService = require("./aiService");
 
 // ===== 방장 잠수 → 자동 위임 =====
@@ -131,6 +131,17 @@ async function _generateAndSaveAIAnswers(room, game) {
   const allQuestions = await Question.findAll({ where: { round_id: roundId } });
   const allQTexts = allQuestions.map((q) => q.text);
 
+  // 인간 플레이어들의 답변을 가져와서 AI에게 톤/뉘앙스 참고용으로 전달
+  const humanPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: false } });
+  const humanPlayerIds = humanPlayers.map((p) => p.id);
+  const humanAnswerRows = await Answer.findAll({
+    where: {
+      question_id: currentQuestionId,
+      answered_by_player_id: { [Op.in]: humanPlayerIds },
+    },
+  });
+  const humanAnswers = humanAnswerRows.map((a) => (a.text || "").trim()).filter((t) => t);
+
   for (const aiPlayer of aiPlayers) {
     const exists = await Answer.findOne({
       where: { question_id: currentQuestionId, answered_by_player_id: aiPlayer.id },
@@ -144,6 +155,7 @@ async function _generateAndSaveAIAnswers(room, game) {
       allQuestions: allQTexts,
       currentQuestionOrderNo: question.order_no,
       answer_type: question.answer_type || "free",
+      humanAnswers,
     });
 
     await Answer.create({
@@ -289,7 +301,12 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
   room.last_activity_at = new Date();
   await room.save();
 
+  // 다시쓰기 editing 해제 (재제출이므로)
+  removeEditing(room.code, "question", playerId);
+
   // 전원 제출하면 타임아웃 기다리지 말고 즉시 다음 단계로
+  const editingQ = getEditingCount(room.code, "question");
+
   if (room.is_ai_room) {
     // AI 방: 인간 플레이어 전원 제출 여부만 체크
     const humanPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: false } });
@@ -299,16 +316,15 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
         submitted_by_player_id: { [Op.in]: humanPlayers.map((p) => p.id) },
       },
     });
-    if (humanSubmitted >= humanPlayers.length) {
+    if ((humanSubmitted - editingQ) >= humanPlayers.length) {
       clearTimers(room.code, ["question_submit_end"]);
-      // 논블로킹: 클라이언트 응답 먼저, AI 생성은 백그라운드
       endQuestionSubmit(io, room.code).catch((e) => console.error("[endQuestionSubmit]", e?.message));
       return;
     }
   } else {
     const players = await Player.findAll({ where: { room_id: room.id } });
     const submittedCount = await Question.count({ where: { round_id: roundId } });
-    if (submittedCount >= players.length) {
+    if ((submittedCount - editingQ) >= players.length) {
       clearTimers(room.code, ["question_submit_end"]);
       await endQuestionSubmit(io, room.code);
       return;
@@ -322,6 +338,9 @@ async function endQuestionSubmit(io, roomCode) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "question_submit") return;
+
+  // 다시쓰기 상태 클리어 (타이머 만료 시 DB의 최초 저장본 사용)
+  clearEditing(roomCode, "question");
 
   // 레이스 컨디션 방지: phase를 먼저 전환하여 중복 진입 차단
   room.phase = "preparing_ask";
@@ -441,6 +460,11 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
   room.last_activity_at = new Date();
   await room.save();
 
+  // 다시쓰기 editing 해제 (재제출이므로)
+  removeEditing(room.code, "answer", playerId);
+
+  const editingA = getEditingCount(room.code, "answer");
+
   if (room.is_ai_room) {
     // AI 방: 인간 플레이어 전원 답변 여부만 체크
     const humanPlayers = await Player.findAll({ where: { room_id: room.id, is_ai: false } });
@@ -450,9 +474,8 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
         answered_by_player_id: { [Op.in]: humanPlayers.map((p) => p.id) },
       },
     });
-    if (humanAnswered >= humanPlayers.length) {
+    if ((humanAnswered - editingA) >= humanPlayers.length) {
       clearTimers(room.code, ["answer_end"]);
-      // 논블로킹: 클라이언트 응답 먼저, AI 생성은 백그라운드
       endAnswer(io, room.code).catch((e) => console.error("[endAnswer]", e?.message));
     } else {
       io.to(room.code).emit("game:answerSubmitted", { ok: true });
@@ -460,7 +483,7 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
   } else {
     const players = await Player.findAll({ where: { room_id: room.id } });
     const answeredCount = await Answer.count({ where: { question_id: qid } });
-    if (answeredCount >= players.length) {
+    if ((answeredCount - editingA) >= players.length) {
       await endAnswer(io, room.code);
     } else {
       io.to(room.code).emit("game:answerSubmitted", { ok: true });
@@ -472,6 +495,9 @@ async function endAnswer(io, roomCode) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "ask") return;
+
+  // 다시쓰기 상태 클리어 (타이머 만료 시 DB의 최초 저장본 사용)
+  clearEditing(roomCode, "answer");
 
   // 레이스 컨디션 방지: phase를 먼저 전환하여 중복 진입 차단
   room.phase = "preparing_reveal";
@@ -714,6 +740,15 @@ async function heartQuestion(io, { roomCode, playerId, question_id }) {
   });
 }
 
+// ===== 다시쓰기 알림 =====
+async function editQuestion(roomCode, playerId) {
+  addEditing(roomCode, "question", playerId);
+}
+
+async function editAnswer(roomCode, playerId) {
+  addEditing(roomCode, "answer", playerId);
+}
+
 module.exports = {
   startRound,
   hostStartGame,
@@ -725,4 +760,6 @@ module.exports = {
   hostNextRound,
   hostEndGame,
   heartQuestion,
+  editQuestion,
+  editAnswer,
 };

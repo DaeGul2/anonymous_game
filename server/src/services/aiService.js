@@ -183,7 +183,7 @@ Output ONLY the question text, nothing else.`;
 }
 
 // AI 답변 1개 생성
-async function generateAIAnswer({ roomId, roundId, question, allQuestions, currentQuestionOrderNo, answer_type }) {
+async function generateAIAnswer({ roomId, roundId, question, allQuestions, currentQuestionOrderNo, answer_type, humanAnswers }) {
   // yesno 질문은 GPT 호출 없이 랜덤 선택
   if (answer_type === "yesno") {
     return Math.random() < 0.5 ? "예" : "아니오";
@@ -209,6 +209,10 @@ async function generateAIAnswer({ roomId, roundId, question, allQuestions, curre
 
   const archiveBlock = formatArchiveSamples(archiveSamples);
 
+  const humanAnswerBlock = (humanAnswers && humanAnswers.length > 0)
+    ? humanAnswers.map((a, i) => `${i + 1}. ${a}`).join("\n")
+    : "";
+
   const system = `You are a Korean person in your late 20s playing an anonymous Q&A game with friends.
 You must answer the given question in Korean.
 
@@ -220,6 +224,7 @@ CRITICAL RULES:
 - NEVER overuse ~ (tilde) or ! (exclamation marks). Real people rarely spam these.
 - Write like you're texting on KakaoTalk: occasional typos, skipped spaces, abbreviations (ㅋㅋ, ㄹㅇ, ㅇㅇ, 걍). Perfect grammar looks like AI.
 - Examples of natural writing: "솔직히나는", "몰겟음", "잇음", "그건좀"
+- IMPORTANT: If other players' answers are provided below, carefully observe their writing style — length, emoji usage, tone (formal vs casual), use of ㅋㅋ/ㅎㅎ, spacing patterns. Match their vibe closely. If they write short and dry, you write short and dry too. If they don't use ㅋㅋ, don't use it either. Do NOT copy their actual content — just match the style.
 
 Output ONLY the answer text, nothing else.`;
 
@@ -231,6 +236,10 @@ Output ONLY the answer text, nothing else.`;
 
   if (historyBlock) {
     user += `[Current game history]\n${historyBlock}\n\n`;
+  }
+
+  if (humanAnswerBlock) {
+    user += `[Other players' answers to this same question — match their style/tone, NOT content]\n${humanAnswerBlock}\n\n`;
   }
 
   user += `[Question to answer]\n${question}\n\nYour answer:`;

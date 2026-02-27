@@ -139,7 +139,13 @@
 
 /* ===== Base ===== */
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; padding: 0; }
+html {
+  height: 100%; margin: 0; padding: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+body { height: 100%; margin: 0; padding: 0; }
 
 body {
   font-family: 'Wanted Sans Variable', 'Wanted Sans', -apple-system, 'Noto Sans KR', sans-serif;
@@ -175,13 +181,13 @@ input, textarea, select, button { font-size: 16px; font-family: inherit; }
   max-width: var(--app-max-width);
   margin: 0 auto;
   padding:
-    calc(var(--pad) + env(safe-area-inset-top))
+    calc(var(--pad) + max(16px, env(safe-area-inset-top)))
     var(--pad)
     calc(72px + env(safe-area-inset-bottom));
 }
 
 .globalHeaderSpacer {
-  height: calc(var(--header-h) + env(safe-area-inset-top));
+  height: calc(var(--header-h) + max(16px, env(safe-area-inset-top)));
 }
 
 /* ===== Global Header ===== */
@@ -189,8 +195,8 @@ input, textarea, select, button { font-size: 16px; font-family: inherit; }
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1100;
-  padding-top: env(safe-area-inset-top);
-  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: max(16px, env(safe-area-inset-top));
+  height: calc(var(--header-h) + max(16px, env(safe-area-inset-top)));
   display: flex;
   align-items: flex-end;
   padding-bottom: 10px;

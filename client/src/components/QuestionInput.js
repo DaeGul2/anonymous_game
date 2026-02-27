@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import { QUESTION_TEMPLATES } from "../constants/questionTemplates";
 
-export default function QuestionInput({ canEdit, savedText, submitted, onSave, deadlineExpiredSignal }) {
+export default function QuestionInput({ canEdit, savedText, submitted, onSave, onEdit, deadlineExpiredSignal }) {
   const [draft, setDraft] = useState(savedText || "");
   const [answerType, setAnswerType] = useState("free");
   const [editing, setEditing] = useState(!submitted);
@@ -71,7 +71,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, d
         {canEdit && (
           <Button
             size="small" variant="text"
-            onClick={() => { setEditing(true); setDraft(savedText || draft); }}
+            onClick={() => { setEditing(true); setDraft(savedText || draft); if (onEdit) onEdit(); }}
             sx={{ mt: 1.2, color: "var(--text-2)", fontWeight: 700, fontSize: 12 }}
           >
             다시 쓰기
