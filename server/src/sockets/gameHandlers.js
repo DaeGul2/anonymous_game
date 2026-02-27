@@ -105,6 +105,18 @@ module.exports = (io, socket) => {
     }
   });
 
+  // ===== 익명 감정표현 =====
+  socket.on("game:reaction", ({ emoji, text } = {}) => {
+    const sess = getSocketSession(socket.id);
+    if (!sess?.roomCode) return;
+    io.to(sess.roomCode).emit("game:reaction:broadcast", {
+      ok: true,
+      id: Date.now() + Math.random(),
+      emoji: emoji || null,
+      text: text || null,
+    });
+  });
+
   // ===== 질문 하트 토글 =====
   socket.on("game:heartQuestion", async ({ question_id } = {}) => {
     try {

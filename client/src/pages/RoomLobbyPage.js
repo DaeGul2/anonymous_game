@@ -144,12 +144,15 @@ export default function RoomLobbyPage() {
     }
   }, [state, nav]);
 
-  // 방 못 찾으면 홈으로
+  // 방 못 찾으면 홈으로 (닉네임/입장 관련 에러는 현재 화면에 유지)
+  const stayErrors = ["닉네임", "꽉 찼", "참여할 수 없"];
   useEffect(() => {
     if (error && !state?.room) {
+      if (stayErrors.some((k) => error.includes(k))) return;
       const t = setTimeout(() => nav("/", { replace: true }), 1500);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, state, nav]);
 
   const myPlayer = useMemo(() => {
@@ -201,7 +204,7 @@ export default function RoomLobbyPage() {
         </IconButton>
       </Box>
 
-      {error && (
+      {error && !stayErrors.some((k) => error.includes(k)) && (
         <Paper
           className="glassCard section"
           sx={{ p: 1.8, border: "1px solid rgba(239,68,68,0.35) !important" }}
@@ -252,24 +255,40 @@ export default function RoomLobbyPage() {
             <AvatarPicker value={avatarIdx} onChange={handleAvatarChange} />
 
             {/* 닉네임 입력 */}
-            <TextField
-              label="닉네임"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && nickname.trim() && doJoin()}
-              inputProps={{ maxLength: 20 }}
-              fullWidth
-              autoFocus
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "var(--radius-lg)",
-                  fontWeight: 700, fontSize: 16,
-                  "& fieldset": { border: "1px solid rgba(124,58,237,0.25)" },
-                  "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.45)" },
-                  "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.7)" },
-                },
-              }}
-            />
+            <Box>
+              <TextField
+                label="닉네임"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && nickname.trim() && doJoin()}
+                inputProps={{ maxLength: 20 }}
+                fullWidth
+                autoFocus
+                error={!!error && error.includes("닉네임")}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "var(--radius-lg)",
+                    fontWeight: 700, fontSize: 16,
+                    "& fieldset": { border: "1px solid rgba(124,58,237,0.25)" },
+                    "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.45)" },
+                    "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.7)" },
+                  },
+                }}
+              />
+              {error && stayErrors.some((k) => error.includes(k)) && (
+                <Typography
+                  sx={{
+                    mt: 0.8,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: "var(--c-red)",
+                    animation: "slideUp 0.3s var(--spring) both",
+                  }}
+                >
+                  ⚠️ {error}
+                </Typography>
+              )}
+            </Box>
 
             <Button
               variant="contained"

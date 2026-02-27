@@ -150,6 +150,7 @@ async function main() {
     "room:create": 5000,
     "game:editQuestion": 2000,
     "game:editAnswer": 2000,
+    "game:reaction": 1000,
   };
   const DEFAULT_COOLDOWN = 500;
 

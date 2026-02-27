@@ -34,6 +34,7 @@ export const useRoomStore = create((set, get) => ({
 
     hearts_by_qid: {},  // { [qid]: { count: number, hearted: boolean } }
     submission_progress: null,  // { submitted: number, total: number }
+    reactions: [],  // [{ id, emoji, text }]
   },
 
   error: "",
@@ -265,6 +266,7 @@ export const useRoomStore = create((set, get) => ({
               answer_saved_at_by_qid: {},
               answer_pending_text_by_qid: {},
               hearts_by_qid: {},
+              reactions: [],
               current_question: null,
               reveal: null,
               round_end: null,
@@ -342,6 +344,7 @@ export const useRoomStore = create((set, get) => ({
           current_question: null,
           reveal: null,
           round_end: null,
+          reactions: [],
         },
       }));
     });
@@ -395,6 +398,17 @@ export const useRoomStore = create((set, get) => ({
       if (!p?.ok) return;
       set((st) => ({
         game: { ...st.game, submission_progress: { submitted: p.submitted, total: p.total } },
+      }));
+    });
+
+    // ====== 익명 감정표현 ======
+    s.on(EVENTS.GAME_REACTION_BROADCAST, (p) => {
+      if (!p?.ok) return;
+      set((st) => ({
+        game: {
+          ...st.game,
+          reactions: [...st.game.reactions, { id: p.id, emoji: p.emoji, text: p.text }].slice(-20),
+        },
       }));
     });
 
@@ -475,6 +489,16 @@ export const useRoomStore = create((set, get) => ({
 
   gameHeartQuestion: (question_id) => {
     connectSocket().emit(EVENTS.GAME_HEART_Q, { question_id });
+  },
+
+  gameReaction: (emoji, text) => {
+    connectSocket().emit(EVENTS.GAME_REACTION, { emoji: emoji || null, text: text || null });
+  },
+
+  removeReaction: (id) => {
+    set((st) => ({
+      game: { ...st.game, reactions: st.game.reactions.filter((r) => r.id !== id) },
+    }));
   },
 
   gameStart: () => connectSocket().emit(EVENTS.GAME_START),

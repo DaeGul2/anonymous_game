@@ -137,6 +137,32 @@
   50%      { opacity: 0.65; }
 }
 
+/* 버블 수직 상승 (ease-out → 위에서 자연스럽게 감속) */
+@keyframes reactionRise {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(calc(-1 * var(--rise-h, 60vh))); }
+}
+
+/* 버블 좌우 흔들림 (S자 곡선, alternate로 왕복) */
+@keyframes reactionWobble {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(var(--wobble, 15px)); }
+}
+
+/* 버블 페이드: 처음에 톡 나타나고, 후반부에 서서히 사라짐 */
+@keyframes reactionFade {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  8%   { opacity: 1; transform: translateX(-50%) scale(1.15); }
+  15%  { opacity: 1; transform: translateX(-50%) scale(1); }
+  70%  { opacity: 0.85; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+}
+
+@keyframes reactionMenuIn {
+  0%   { transform: translateY(12px) scale(0.92); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
 /* ===== Base ===== */
 *, *::before, *::after { box-sizing: border-box; }
 html {

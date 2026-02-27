@@ -7,6 +7,7 @@ import AnonymousReveal from "../components/AnonymousReveal";
 import QuestionInput from "../components/QuestionInput";
 import AnswerInput from "../components/AnswerInput";
 import ShareButton from "../components/ShareButton";
+import ReactionFAB from "../components/ReactionFAB";
 import { useRoomStore } from "../state/useRoomStore";
 
 function isExpired(deadlineIso) {
@@ -1199,6 +1200,8 @@ export default function GamePage() {
           </Button>
         </Paper>
       )}
+
+      <ReactionFAB />
 
       <Dialog
         open={leaveDialogOpen}

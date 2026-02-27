@@ -50,4 +50,7 @@ export const EVENTS = {
 
   GAME_Q_SUBMITTED: "game:questionSubmitted",
   GAME_A_SUBMITTED: "game:answerSubmitted",
+
+  GAME_REACTION: "game:reaction",
+  GAME_REACTION_BROADCAST: "game:reaction:broadcast",
 };
