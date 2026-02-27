@@ -23,7 +23,7 @@ async function archiveHumanQa(roomId) {
     const heartRows = await QuestionHeart.findAll({
       attributes: [
         "question_id",
-        [sequelize.fn("COUNT", sequelize.col("id")), "cnt"],
+        [sequelize.fn("COUNT", sequelize.col("QuestionHeart.id")), "cnt"],
       ],
       include: [{
         model: Question,
@@ -75,8 +75,7 @@ async function archiveHumanQa(roomId) {
           player_count: playerCount,
           popularity_score: calcScore(hearts, playerCount),
         };
-      })
-      .filter((r) => r.heart_count > 0); // 하트 0개는 아카이브 안 함
+      });
 
     // --- 2) AI 질문(하트 있는 것만) + 인간 답변 ---
     const hearted_qids = [...heartMap.entries()]
