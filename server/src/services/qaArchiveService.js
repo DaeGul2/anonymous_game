@@ -17,112 +17,64 @@ function calcScore(hearts, playerCount) {
  */
 async function archiveHumanQa(roomId) {
   try {
+    // AI 플레이어 ID 목록 (이탈한 인간 플레이어는 이미 삭제됐으므로, 남아있는 AI ID로 구분)
+    const aiPlayerIds = (await Player.findAll({
+      where: { room_id: roomId, is_ai: true },
+      attributes: ["id"],
+    })).map((p) => p.id);
+
+    // 전체 답변 + 질문 조회 (Player JOIN 없이, 삭제된 플레이어 데이터도 살림)
+    const allAnswers = await Answer.findAll({
+      where: { room_id: roomId },
+      include: [{ model: Question, as: "question", required: true }],
+    });
+
+    // playerCount: 현재 남은 플레이어 + AI (정확하진 않지만 근사치)
     const playerCount = await Player.count({ where: { room_id: roomId } });
+    // 실제 참여했던 플레이어 수 (답변에서 유니크 player_id)
+    const uniquePlayerIds = new Set(allAnswers.map((a) => a.answered_by_player_id));
+    const actualPlayerCount = Math.max(playerCount, uniquePlayerIds.size);
 
     // 질문별 하트 수 집계
-    const heartRows = await QuestionHeart.findAll({
-      attributes: [
-        "question_id",
-        [sequelize.fn("COUNT", sequelize.col("QuestionHeart.id")), "cnt"],
-      ],
-      include: [{
-        model: Question,
-        as: "question",
-        required: true,
-        where: { room_id: roomId },
-        attributes: [],
-      }],
-      group: ["question_id"],
-      raw: true,
-    });
-    const heartMap = new Map(heartRows.map((h) => [h.question_id, Number(h.cnt)]));
-
-    // --- 1) 인간 질문 + 인간 답변 (기존) ---
-    const humanAnswers = await Answer.findAll({
-      where: { room_id: roomId },
-      include: [
-        {
-          model: Question,
-          as: "question",
-          required: true,
-          include: [{
-            model: Player,
-            as: "submitted_by",
-            required: true,
-            where: { is_ai: false },
-            attributes: [],
-          }],
-        },
-        {
-          model: Player,
-          as: "answered_by",
-          required: true,
-          where: { is_ai: false },
-          attributes: [],
-        },
-      ],
-    });
-
-    const rows = humanAnswers
-      .filter((a) => a.text && a.text.trim() && a.question?.text?.trim())
-      .map((a) => {
-        const hearts = heartMap.get(a.question.id) || 0;
-        return {
-          question_text: a.question.text.trim(),
-          answer_text: a.text.trim(),
-          answer_type: a.question.answer_type || "free",
-          heart_count: hearts,
-          player_count: playerCount,
-          popularity_score: calcScore(hearts, playerCount),
-        };
-      });
-
-    // --- 2) AI 질문(하트 있는 것만) + 인간 답변 ---
-    const hearted_qids = [...heartMap.entries()]
-      .filter(([, cnt]) => cnt > 0)
-      .map(([qid]) => qid);
-
-    if (hearted_qids.length > 0) {
-      const aiAnswers = await Answer.findAll({
-        where: { room_id: roomId },
-        include: [
-          {
-            model: Question,
-            as: "question",
-            required: true,
-            where: {
-              id: { [Op.in]: hearted_qids },
-            },
-            include: [{
-              model: Player,
-              as: "submitted_by",
-              required: true,
-              where: { is_ai: true },
-              attributes: [],
-            }],
-          },
-          {
-            model: Player,
-            as: "answered_by",
-            required: true,
-            where: { is_ai: false },
-            attributes: [],
-          },
+    const questionIds = [...new Set(allAnswers.map((a) => a.question_id))];
+    let heartMap = new Map();
+    if (questionIds.length > 0) {
+      const heartRows = await QuestionHeart.findAll({
+        attributes: [
+          "question_id",
+          [sequelize.fn("COUNT", sequelize.col("QuestionHeart.id")), "cnt"],
         ],
+        where: { question_id: { [Op.in]: questionIds } },
+        group: ["question_id"],
+        raw: true,
       });
+      heartMap = new Map(heartRows.map((h) => [h.question_id, Number(h.cnt)]));
+    }
 
-      for (const a of aiAnswers) {
-        if (!a.text?.trim() || !a.question?.text?.trim()) continue;
-        const hearts = heartMap.get(a.question.id) || 0;
-        rows.push({
-          question_text: a.question.text.trim(),
-          answer_text: a.text.trim(),
-          answer_type: a.question.answer_type || "free",
-          heart_count: hearts,
-          player_count: playerCount,
-          popularity_score: calcScore(hearts, playerCount),
-        });
-      }
+    const rows = [];
+
+    for (const a of allAnswers) {
+      if (!a.text?.trim() || !a.question?.text?.trim()) continue;
+
+      const isAiAnswer = aiPlayerIds.includes(a.answered_by_player_id);
+      const isAiQuestion = aiPlayerIds.includes(a.question.submitted_by_player_id);
+
+      // AI 답변은 제외 (인간 답변만 아카이브)
+      if (isAiAnswer) continue;
+
+      const hearts = heartMap.get(a.question.id) || 0;
+
+      // AI 질문은 하트 1개 이상만
+      if (isAiQuestion && hearts === 0) continue;
+
+      rows.push({
+        question_text: a.question.text.trim(),
+        answer_text: a.text.trim(),
+        answer_type: a.question.answer_type || "free",
+        heart_count: hearts,
+        player_count: actualPlayerCount,
+        popularity_score: calcScore(hearts, actualPlayerCount),
+      });
     }
 
     if (rows.length > 0) {
