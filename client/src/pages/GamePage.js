@@ -6,6 +6,7 @@ import TimerBar from "../components/TimerBar";
 import AnonymousReveal from "../components/AnonymousReveal";
 import QuestionInput from "../components/QuestionInput";
 import AnswerInput from "../components/AnswerInput";
+import ShareButton from "../components/ShareButton";
 import { useRoomStore } from "../state/useRoomStore";
 
 function isExpired(deadlineIso) {
@@ -1041,6 +1042,16 @@ export default function GamePage() {
               방장만 진행할 수 있습니다
             </Typography>
           )}
+
+          <Box sx={{ mt: 1.5 }}>
+            <ShareButton
+              url={window.location.origin}
+              title="익명게임 - 친구들과 솔직한 익명 Q&A"
+              text="익명게임 재밌다 ㅋㅋ 같이 하자!"
+              label="친구한테 공유하기"
+              icon="🎮"
+            />
+          </Box>
         </Paper>
       )}
 

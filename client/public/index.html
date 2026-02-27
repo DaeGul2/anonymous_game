@@ -16,7 +16,59 @@
       href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.1/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css"
     />
 
+    <!-- OG Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://anonymous-game.store" />
+    <meta property="og:title" content="익명게임 - 친구들과 솔직한 익명 Q&A" />
+    <meta property="og:description" content="솔직한 질문, 익명의 답변. 친구들과 함께하는 실시간 익명 게임 🎭" />
+    <meta property="og:image" content="https://anonymous-game.store/og-image.png" />
+    <meta property="og:site_name" content="익명게임" />
+    <meta property="og:locale" content="ko_KR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="익명게임 - 친구들과 솔직한 익명 Q&A" />
+    <meta name="twitter:description" content="솔직한 질문, 익명의 답변. 친구들과 함께하는 실시간 익명 게임 🎭" />
+    <meta name="twitter:image" content="https://anonymous-game.store/og-image.png" />
+
     <title>익명게임</title>
+
+    <!-- 인앱 브라우저 → 외부 브라우저로 리다이렉트 -->
+    <script>
+      (function () {
+        var ua = navigator.userAgent || '';
+        var url = location.href;
+
+        // 카카오톡
+        if (/KAKAOTALK/i.test(ua)) {
+          location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+          return;
+        }
+
+        // 라인
+        if (/Line\//i.test(ua)) {
+          location.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
+          return;
+        }
+
+        // 인스타그램, 페이스북, 네이버, 트위터 등 나머지 인앱 브라우저
+        if (/FBAN|FBAV|Instagram|NAVER|Snapchat|ZumSearch/i.test(ua)) {
+          // Android: intent scheme으로 크롬 열기
+          if (/android/i.test(ua)) {
+            location.href =
+              'intent://' +
+              url.replace(/https?:\/\//, '') +
+              '#Intent;scheme=https;package=com.android.chrome;end';
+            return;
+          }
+          // iOS: Safari로 열기 (딜레이 후 fallback)
+          if (/iphone|ipad|ipod/i.test(ua)) {
+            location.href = url;
+            return;
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>JavaScript를 활성화해주세요.</noscript>

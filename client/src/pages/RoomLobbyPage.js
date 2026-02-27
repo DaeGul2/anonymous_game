@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import ReadyPanel from "../components/ReadyPanel";
 import AvatarPicker from "../components/AvatarPicker";
 import { avatarUrl, loadSavedAvatar, saveAvatarChoice } from "../constants/avatars";
+import ShareButton from "../components/ShareButton";
 import { useRoomStore } from "../state/useRoomStore";
 
 function PlayerRow({ player, myId, hostId, index }) {
@@ -344,6 +345,20 @@ export default function RoomLobbyPage() {
                 sx={{ fontWeight: 900, borderRadius: 999, fontSize: 11, opacity: 0.8 }}
               />
             </Stack>
+          </Paper>
+
+          {/* 친구 초대 */}
+          <Paper
+            className="glassCard section"
+            sx={{ p: 2, animation: "slideUp 0.48s var(--spring) both 0.03s" }}
+          >
+            <ShareButton
+              url={`${window.location.origin}/room/${state.room.code}`}
+              title="익명게임 - 같이 하자!"
+              text={`익명게임에 초대합니다! 방 코드: ${state.room.code}`}
+              label="친구 초대하기"
+              icon="📨"
+            />
           </Paper>
 
           {/* 참여자 목록 */}

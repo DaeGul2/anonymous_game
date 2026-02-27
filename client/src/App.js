@@ -1,11 +1,12 @@
 // src/App.js
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Box, Button, CircularProgress } from "@mui/material";
 import HomePage from "./pages/HomePage";
 import RoomLobbyPage from "./pages/RoomLobbyPage";
 import GamePage from "./pages/GamePage";
 import LoginPage from "./pages/LoginPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import { useRoomStore } from "./state/useRoomStore";
 import "./App.css";
 
@@ -78,11 +79,34 @@ function GlobalHeader() {
 
 function AuthGate({ children }) {
   const { user, authLoading, fetchUser } = useRoomStore();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 미로그인 상태에서 현재 경로 저장
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const path = location.pathname + location.search;
+      if (path && path !== "/") {
+        sessionStorage.setItem("redirectAfterLogin", path);
+      }
+    }
+  }, [authLoading, user, location]);
+
+  // 로그인 성공 후 저장된 경로로 복원
+  useEffect(() => {
+    if (user) {
+      const saved = sessionStorage.getItem("redirectAfterLogin");
+      if (saved) {
+        sessionStorage.removeItem("redirectAfterLogin");
+        navigate(saved, { replace: true });
+      }
+    }
+  }, [user, navigate]);
 
   if (authLoading) {
     return (
@@ -123,16 +147,21 @@ export default function App() {
       <GlobalHeader />
       <div className="globalHeaderSpacer" />
 
-      <AuthGate>
-        <Routes>
-          <Route path="/"           element={<HomePage />} />
-          <Route path="/room/:code" element={<RoomLobbyPage />} />
-          <Route path="/game/:code" element={<GamePage />} />
-          <Route path="/room"       element={<Navigate to="/" replace />} />
-          <Route path="/game"       element={<Navigate to="/" replace />} />
-          <Route path="*"           element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthGate>
+      <Routes>
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="*" element={
+          <AuthGate>
+            <Routes>
+              <Route path="/"           element={<HomePage />} />
+              <Route path="/room/:code" element={<RoomLobbyPage />} />
+              <Route path="/game/:code" element={<GamePage />} />
+              <Route path="/room"       element={<Navigate to="/" replace />} />
+              <Route path="/game"       element={<Navigate to="/" replace />} />
+              <Route path="*"           element={<Navigate to="/" replace />} />
+            </Routes>
+          </AuthGate>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }

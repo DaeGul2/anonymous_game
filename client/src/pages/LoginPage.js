@@ -130,6 +130,22 @@ export default function LoginPage() {
           로그인하면 연결이 끊겨도 자동으로 복구됩니다
         </Typography>
       </Box>
+
+      <Typography
+        component="a"
+        href="/privacy"
+        sx={{
+          mt: 2,
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--text-3)",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+          "&:hover": { color: "var(--c-primary)" },
+        }}
+      >
+        개인정보처리방침
+      </Typography>
     </Box>
   );
 }
