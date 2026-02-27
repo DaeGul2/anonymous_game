@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { connectSocket } from "../sockets/socket";
 import { EVENTS } from "../sockets/events";
 
-const SERVER = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 export const useRoomStore = create((set, get) => ({
   socketReady: false,

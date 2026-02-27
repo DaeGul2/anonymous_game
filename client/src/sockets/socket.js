@@ -11,7 +11,7 @@ export function connectSocket() {
   if (socket) return socket;
 
   // ✅ 같은 도메인으로 붙기 (https면 자동으로 wss로 감)
-  const SERVER = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+  const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
   socket = io(SERVER, {
     path: "/socket.io",
