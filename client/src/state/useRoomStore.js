@@ -294,6 +294,21 @@ export const useRoomStore = create((set, get) => ({
       }));
     });
 
+    // ====== 방장 잠수 → 자동 위임 ======
+    s.on(EVENTS.GAME_HOST_CHANGED, (p) => {
+      if (!p?.ok) return;
+      set((st) => ({
+        game: {
+          ...st.game,
+          hostChanged: {
+            new_host_player_id: p.new_host_player_id,
+            new_host_nickname: p.new_host_nickname,
+            at: Date.now(),
+          },
+        },
+      }));
+    });
+
     s.on("disconnect", () => set({ socketReady: false }));
 
     set({ socketReady: true });

@@ -6,6 +6,73 @@ const { scheduleAt, clearTimers } = require("./timerService");
 const { setGameRuntime, getRoomRuntime } = require("../store/memoryStore");
 const aiService = require("./aiService");
 
+// ===== 방장 잠수 → 자동 위임 =====
+
+async function scheduleHostTimeout(io, roomCode, phase) {
+  const deadline = new Date(Date.now() + env.HOST_ACTION_SECONDS * 1000);
+
+  // DB에 deadline 저장 (클라이언트가 타이머 표시용)
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) return;
+  room.phase_deadline_at = deadline;
+  await room.save();
+
+  await broadcastRoom(io, room.id);
+
+  clearTimers(roomCode, ["host_timeout"]);
+  scheduleAt(roomCode, "host_timeout", deadline.getTime() + 20, async () => {
+    try {
+      await handleHostTimeout(io, roomCode, phase);
+    } catch (e) {
+      console.error("[hostTimeout]", e?.message || e);
+    }
+  });
+}
+
+async function handleHostTimeout(io, roomCode, phase) {
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) return;
+  // phase가 바뀌었으면 이미 방장이 행동한 것
+  if (room.phase !== phase) return;
+
+  const currentHostId = room.host_player_id;
+
+  // 현재 방장 제외, 접속 중인 인간 플레이어 중 가장 오래된 사람에게 위임
+  const nextHost = await Player.findOne({
+    where: {
+      room_id: room.id,
+      is_ai: false,
+      is_connected: true,
+      id: { [Op.ne]: currentHostId },
+    },
+    order: [["joined_at", "ASC"]],
+  });
+
+  if (nextHost) {
+    room.host_player_id = nextHost.id;
+    room.last_activity_at = new Date();
+    await room.save();
+
+    await broadcastRoom(io, room.id);
+
+    io.to(roomCode).emit("game:hostChanged", {
+      ok: true,
+      new_host_player_id: nextHost.id,
+      new_host_nickname: nextHost.nickname,
+    });
+
+    // 새 방장에게도 타이머 다시 시작
+    await scheduleHostTimeout(io, roomCode, phase);
+  } else {
+    // 위임할 사람 없으면 자동 진행
+    if (phase === "reveal") {
+      await nextQuestionOrEnd(io, roomCode);
+    } else if (phase === "round_end") {
+      await startRound(io, roomCode);
+    }
+  }
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -455,7 +522,10 @@ async function endAnswer(io, roomCode) {
     ),
   });
 
-  clearTimers(room.code, ["reveal_end"]);
+  clearTimers(room.code, ["reveal_end", "host_timeout"]);
+
+  // 방장 잠수 타이머 시작
+  await scheduleHostTimeout(io, room.code, "reveal");
 }
 
 async function hostRevealNext(io, roomCode, hostPlayerId) {
@@ -464,6 +534,7 @@ async function hostRevealNext(io, roomCode, hostPlayerId) {
   if (room.host_player_id !== hostPlayerId) throw new Error("방장만 가능");
   if (room.phase !== "reveal") throw new Error("지금은 정답 공개 상태가 아님");
 
+  clearTimers(room.code, ["host_timeout"]);
   await nextQuestionOrEnd(io, room.code);
 }
 
@@ -529,6 +600,10 @@ async function nextQuestionOrEnd(io, roomCode) {
       heart_summary: heartSummary,
     });
 
+    // 방장 잠수 타이머 시작
+    clearTimers(room.code, ["host_timeout"]);
+    await scheduleHostTimeout(io, room.code, "round_end");
+
     return;
   }
 
@@ -592,6 +667,7 @@ async function hostNextRound(io, roomCode, hostPlayerId) {
   if (room.host_player_id !== hostPlayerId) throw new Error("방장만 가능");
   if (room.phase !== "round_end") throw new Error("라운드 종료 상태가 아님");
 
+  clearTimers(room.code, ["host_timeout"]);
   await startRound(io, room.code);
 }
 
@@ -610,7 +686,7 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
     await Player.update({ is_ready: false }, { where: { room_id: room.id }, transaction: t });
   });
 
-  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end"]);
+  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout"]);
   setGameRuntime(room.code, { roundId: null, questionIds: [], questionIndex: 0, currentQuestionId: null });
 
   await broadcastRoom(io, room.id);

@@ -40,6 +40,8 @@ function keyAnswer({ code, roundNo, qid, userId }) {
   return `ag:${code}:r${roundNo}:q${qid}:a:${userId}`;
 }
 
+const HOST_TIMEOUT_SECONDS = 60;
+
 function phaseLabel(p) {
   if (p === "question_submit") return "질문 작성";
   if (p === "ask")             return "답변 작성";
@@ -279,6 +281,7 @@ export default function GamePage() {
   const [deadlineExpiredSignal, setDeadlineExpiredSignal] = useState(0);
   const [timeLeftMs, setTimeLeftMs] = useState(Infinity);
   const wasExpiredRef = useRef(false);
+  const [hostChangedNotice, setHostChangedNotice] = useState(null);
 
   useEffect(() => {
     if (!deadlineAt) {
@@ -361,6 +364,15 @@ export default function GamePage() {
     if (myAnswerSubmitted && aKey) lsDel(aKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myAnswerSubmitted, aKey]);
+
+  // 방장 변경 알림 (5초 후 자동 숨김)
+  useEffect(() => {
+    if (!game.hostChanged?.at) return;
+    if (Date.now() - game.hostChanged.at > 5000) return;
+    setHostChangedNotice(game.hostChanged);
+    const t = setTimeout(() => setHostChangedNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [game.hostChanged?.at]);
 
   const handleSaveQuestion = (text, answer_type) => {
     if (!code) return;
@@ -503,6 +515,23 @@ export default function GamePage() {
         >
           <Typography sx={{ color: "var(--c-red)", fontWeight: 900, fontSize: 14 }}>
             ⚠️ {error}
+          </Typography>
+        </Paper>
+      )}
+
+      {hostChangedNotice && (
+        <Paper
+          className="glassCard section"
+          sx={{
+            p: 1.8,
+            background:
+              "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.08)) !important",
+            border: "1px solid rgba(245,158,11,0.30) !important",
+            animation: "slideUp 0.4s var(--spring) both",
+          }}
+        >
+          <Typography sx={{ fontWeight: 900, fontSize: 14, color: "#D97706" }}>
+            👑 방장이 {hostChangedNotice.new_host_nickname}님으로 변경되었습니다
           </Typography>
         </Paper>
       )}
@@ -825,51 +854,75 @@ export default function GamePage() {
           )}
 
           <Paper className="glassCard section" sx={{ p: 2 }}>
+            {deadlineAt && (
+              <TimerBar deadlineAt={deadlineAt} totalSeconds={HOST_TIMEOUT_SECONDS} />
+            )}
+
             {isHost ? (
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={hostRevealNext}
-                sx={{
-                  fontWeight: 900,
-                  fontSize: 17,
-                  borderRadius: 999,
-                  py: 1.8,
-                  letterSpacing: "-0.02em",
-                  background: game.reveal?.is_last
-                    ? "linear-gradient(135deg, #10B981, #34D399)"
-                    : "linear-gradient(135deg, #7C3AED, #EC4899)",
-                  boxShadow: game.reveal?.is_last
-                    ? "0 8px 28px rgba(16,185,129,0.42)"
-                    : "0 8px 28px rgba(124,58,237,0.40)",
-                  "&:active": { transform: "scale(0.97)" },
-                  transition: "transform 0.12s ease",
-                  animation: "popIn 0.5s var(--spring) both",
-                }}
-              >
-                {game.reveal?.is_last ? "🎉 라운드 종료" : "다음 질문 →"}
-              </Button>
-            ) : (
-              <Stack
-                direction="row"
-                spacing={1.5}
-                alignItems="center"
-                justifyContent="center"
-                sx={{ py: 1 }}
-              >
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: "var(--c-amber)",
-                    animation: "pulseBeat 1.4s ease-in-out infinite",
-                  }}
-                />
+              <>
                 <Typography
-                  sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#D97706",
+                    textAlign: "center",
+                    mt: deadlineAt ? 1.5 : 0,
+                    mb: 1.5,
+                  }}
                 >
-                  방장이 다음 단계를 진행 중...
+                  ⏳ 시간 안에 진행해주세요!
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={hostRevealNext}
+                  sx={{
+                    fontWeight: 900,
+                    fontSize: 17,
+                    borderRadius: 999,
+                    py: 1.8,
+                    letterSpacing: "-0.02em",
+                    background: game.reveal?.is_last
+                      ? "linear-gradient(135deg, #10B981, #34D399)"
+                      : "linear-gradient(135deg, #7C3AED, #EC4899)",
+                    boxShadow: game.reveal?.is_last
+                      ? "0 8px 28px rgba(16,185,129,0.42)"
+                      : "0 8px 28px rgba(124,58,237,0.40)",
+                    "&:active": { transform: "scale(0.97)" },
+                    transition: "transform 0.12s ease",
+                    animation: "popIn 0.5s var(--spring) both",
+                  }}
+                >
+                  {game.reveal?.is_last ? "🎉 라운드 종료" : "다음 질문 →"}
+                </Button>
+              </>
+            ) : (
+              <Stack spacing={0.8} alignItems="center" sx={{ py: 1 }}>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "var(--c-amber)",
+                      animation: "pulseBeat 1.4s ease-in-out infinite",
+                    }}
+                  />
+                  <Typography
+                    sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}
+                  >
+                    방장이 다음 단계를 진행 중...
+                  </Typography>
+                </Stack>
+                <Typography
+                  sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}
+                >
+                  진행하지 않으면 자동으로 방장이 넘어갑니다
                 </Typography>
               </Stack>
             )}
@@ -911,7 +964,7 @@ export default function GamePage() {
               fontSize: 13,
               fontWeight: 600,
               color: "var(--text-2)",
-              mb: game.round_end?.heart_summary?.length > 0 ? 1.8 : 2.5,
+              mb: 1.5,
               animation: "fadeIn 0.5s ease both 0.2s",
             }}
           >
@@ -919,6 +972,25 @@ export default function GamePage() {
               ? "계속 즐기거나 방을 정리해요."
               : "방장이 결정하는 중입니다..."}
           </Typography>
+
+          {deadlineAt && (
+            <Box sx={{ width: "100%", mb: 1.8, animation: "fadeIn 0.4s ease both 0.25s" }}>
+              <TimerBar deadlineAt={deadlineAt} totalSeconds={HOST_TIMEOUT_SECONDS} />
+              {isHost && (
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#D97706",
+                    textAlign: "center",
+                    mt: 1,
+                  }}
+                >
+                  ⏳ 시간 안에 다음 단계를 선택해주세요!
+                </Typography>
+              )}
+            </Box>
+          )}
 
           {/* 하트 집계 */}
           {game.round_end?.heart_summary?.length > 0 && (
@@ -1031,16 +1103,18 @@ export default function GamePage() {
           </Stack>
 
           {!isHost && (
-            <Typography
-              sx={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-3)",
-                mt: 1.8,
-              }}
-            >
-              방장만 진행할 수 있습니다
-            </Typography>
+            <Stack spacing={0.3} alignItems="center" sx={{ mt: 1.8 }}>
+              <Typography
+                sx={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}
+              >
+                방장만 진행할 수 있습니다
+              </Typography>
+              <Typography
+                sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}
+              >
+                진행하지 않으면 자동으로 방장이 넘어갑니다
+              </Typography>
+            </Stack>
           )}
 
           <Box sx={{ mt: 1.5 }}>
