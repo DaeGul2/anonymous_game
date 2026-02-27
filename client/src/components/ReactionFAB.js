@@ -126,16 +126,20 @@ export default function ReactionFAB() {
 
   const handleSelect = (emoji, text) => {
     const now = Date.now();
+
+    // ✅ 이모지/텍스트 모두 동일 쿨다운 적용 + 동일 메시지 노출
     if (now - lastSentRef.current < COOLDOWN_MS) {
       setCooldownMsg(true);
       clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = setTimeout(() => setCooldownMsg(false), 800);
       return;
     }
+
     lastSentRef.current = now;
     gameReaction(emoji, text);
-    // 한마디 탭만 메뉴 닫기, 이모지는 열어둠
-    if (text) setOpen(false);
+
+    // ✅ 텍스트도 이모지처럼 메뉴 유지 (닫지 않음)
+    // (닫고 싶으면 사용자가 X 누르거나 바깥 클릭)
   };
 
   return (
@@ -195,18 +199,14 @@ export default function ReactionFAB() {
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
               border: "1px solid rgba(255,255,255,0.85)",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(124,58,237,0.10)",
+              boxShadow:
+                "0 12px 40px rgba(0,0,0,0.15), 0 2px 8px rgba(124,58,237,0.10)",
               overflow: "hidden",
               animation: "reactionMenuIn 0.25s var(--spring) both",
             }}
           >
             {/* 탭 헤더 */}
-            <Box
-              sx={{
-                display: "flex",
-                borderBottom: "1px solid rgba(0,0,0,0.06)",
-              }}
-            >
+            <Box sx={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
               {["😆 이모지", "💬 한마디"].map((label, i) => (
                 <Box
                   key={i}
@@ -219,7 +219,10 @@ export default function ReactionFAB() {
                     fontWeight: 900,
                     fontSize: 13,
                     color: tab === i ? "var(--c-primary)" : "var(--text-3)",
-                    borderBottom: tab === i ? "2px solid var(--c-primary)" : "2px solid transparent",
+                    borderBottom:
+                      tab === i
+                        ? "2px solid var(--c-primary)"
+                        : "2px solid transparent",
                     transition: "all 0.15s ease",
                     userSelect: "none",
                   }}
