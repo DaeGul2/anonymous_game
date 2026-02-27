@@ -1,6 +1,6 @@
 // src/pages/GamePage.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import TimerBar from "../components/TimerBar";
 import AnonymousReveal from "../components/AnonymousReveal";
@@ -284,6 +284,7 @@ export default function GamePage() {
   const [timeLeftMs, setTimeLeftMs] = useState(Infinity);
   const wasExpiredRef = useRef(false);
   const [hostChangedNotice, setHostChangedNotice] = useState(null);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!deadlineAt) {
@@ -491,7 +492,7 @@ export default function GamePage() {
             }}
           />
           <IconButton
-            onClick={() => { roomLeave(); nav("/"); }}
+            onClick={() => setLeaveDialogOpen(true)}
             sx={{
               width: 40,
               height: 40,
@@ -562,6 +563,25 @@ export default function GamePage() {
               size="small"
               label={`${state.players.length}/${state.room.max_players}명`}
               sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.8, fontSize: 12 }}
+            />
+          )}
+          {game.submission_progress && (phase === "question_submit" || phase === "ask") && (
+            <Chip
+              size="small"
+              label={`${game.submission_progress.submitted}/${game.submission_progress.total}명 제출`}
+              sx={{
+                fontWeight: 900,
+                borderRadius: 999,
+                fontSize: 12,
+                background: game.submission_progress.submitted === game.submission_progress.total
+                  ? "linear-gradient(135deg, #10B981, #34D399)"
+                  : "rgba(124,58,237,0.12)",
+                color: game.submission_progress.submitted === game.submission_progress.total
+                  ? "#fff"
+                  : "var(--c-primary)",
+                border: "1px solid rgba(124,58,237,0.20)",
+                transition: "all 0.3s ease",
+              }}
             />
           )}
         </Stack>
@@ -1179,6 +1199,47 @@ export default function GamePage() {
           </Button>
         </Paper>
       )}
+
+      <Dialog
+        open={leaveDialogOpen}
+        onClose={() => setLeaveDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: "var(--radius-xl)",
+            p: 1,
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(20px)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 950, fontSize: 18, letterSpacing: "-0.02em" }}>
+          정말 나가시겠습니까?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>
+            게임에서 나가면 다시 들어올 수 없습니다.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            onClick={() => setLeaveDialogOpen(false)}
+            sx={{ fontWeight: 800, fontSize: 14, borderRadius: 999, color: "var(--text-2)" }}
+          >
+            취소
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => { setLeaveDialogOpen(false); roomLeave(); nav("/"); }}
+            sx={{
+              fontWeight: 900, fontSize: 14, borderRadius: 999,
+              background: "linear-gradient(135deg, #EF4444, #F87171)",
+              boxShadow: "0 4px 14px rgba(239,68,68,0.30)",
+            }}
+          >
+            나가기
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

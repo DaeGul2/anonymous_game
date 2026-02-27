@@ -33,6 +33,7 @@ export const useRoomStore = create((set, get) => ({
     answer_pending_text_by_qid: {},
 
     hearts_by_qid: {},  // { [qid]: { count: number, hearted: boolean } }
+    submission_progress: null,  // { submitted: number, total: number }
   },
 
   error: "",
@@ -107,6 +108,79 @@ export const useRoomStore = create((set, get) => ({
         if (res.state.room?.code) {
           try { localStorage.setItem("ag:last_room", res.state.room.code); } catch {}
         }
+
+        // 게임 상태 복원 (rejoin full sync)
+        const g = res.game;
+        if (g) {
+          const gameRestore = {
+            phase: g.phase || null,
+            deadline_at: g.deadline_at || null,
+            round_no: g.round_no || 0,
+            submission_progress: null,
+          };
+
+          // question_submit phase 복원
+          if (g.question_submitted !== undefined) {
+            gameRestore.question_submitted = !!g.question_submitted;
+            gameRestore.question_saved_text = g.question_saved_text || "";
+            gameRestore.question_saved_at = g.question_submitted ? new Date().toISOString() : null;
+            gameRestore.question_pending_text = "";
+          }
+
+          // ask phase 복원
+          if (g.current_question) {
+            gameRestore.current_question = g.current_question;
+            const qid = g.current_question.id;
+            if (qid) {
+              gameRestore.answer_submitted_by_qid = g.answer_submitted ? { [qid]: true } : {};
+              gameRestore.answer_saved_text_by_qid = g.answer_saved_text ? { [qid]: g.answer_saved_text } : {};
+              gameRestore.answer_saved_at_by_qid = g.answer_submitted ? { [qid]: new Date().toISOString() } : {};
+              gameRestore.answer_pending_text_by_qid = { [qid]: "" };
+            }
+            if (g.heart_count !== undefined) {
+              const myPlayer = res.state?.players?.find((pl) => pl.user_id === get().user?.id);
+              const myPlayerId = myPlayer?.id;
+              gameRestore.hearts_by_qid = {
+                [qid]: {
+                  count: g.heart_count,
+                  hearted: myPlayerId ? (g.hearted_by || []).includes(myPlayerId) : false,
+                },
+              };
+            }
+          }
+
+          // reveal phase 복원
+          if (g.reveal) {
+            gameRestore.reveal = g.reveal;
+            gameRestore.current_question = null;
+            const rqid = g.reveal?.question?.id;
+            if (rqid && g.heart_count !== undefined) {
+              const myPlayer = res.state?.players?.find((pl) => pl.user_id === get().user?.id);
+              const myPlayerId = myPlayer?.id;
+              gameRestore.hearts_by_qid = {
+                [rqid]: {
+                  count: g.heart_count,
+                  hearted: myPlayerId ? (g.hearted_by || []).includes(myPlayerId) : false,
+                },
+              };
+            }
+          }
+
+          // round_end phase 복원
+          if (g.round_end) {
+            gameRestore.round_end = g.round_end;
+            gameRestore.current_question = null;
+            gameRestore.reveal = null;
+          }
+
+          set((st) => ({
+            state: res.state,
+            error: "",
+            game: { ...st.game, ...gameRestore },
+          }));
+          return;
+        }
+
         set({ state: res.state, error: "" });
       }
     });
@@ -180,6 +254,7 @@ export const useRoomStore = create((set, get) => ({
             phase: p.phase,
             deadline_at: p.deadline_at || null,
             round_no: p.round_no || st.game.round_no,
+            submission_progress: null,
             ...(isNewRound ? {
               question_submitted: false,
               question_saved_text: "",
@@ -306,6 +381,20 @@ export const useRoomStore = create((set, get) => ({
             at: Date.now(),
           },
         },
+      }));
+    });
+
+    // ====== 제출 진행 표시 ======
+    s.on(EVENTS.GAME_Q_SUBMITTED, (p) => {
+      if (!p?.ok) return;
+      set((st) => ({
+        game: { ...st.game, submission_progress: { submitted: p.submitted, total: p.total } },
+      }));
+    });
+    s.on(EVENTS.GAME_A_SUBMITTED, (p) => {
+      if (!p?.ok) return;
+      set((st) => ({
+        game: { ...st.game, submission_progress: { submitted: p.submitted, total: p.total } },
       }));
     });
 

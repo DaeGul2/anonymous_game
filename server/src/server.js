@@ -13,6 +13,7 @@ const { User } = require("./models");
 const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/auth");
 const { errorHandler } = require("./middlewares/errorHandler");
+const { globalLimiter, authLimiter } = require("./middlewares/rateLimit");
 
 const { touchRoomByCode } = require("./services/cleanupService");
 const { getSocketSession } = require("./store/memoryStore");
@@ -93,6 +94,10 @@ async function main() {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // ===== Rate Limiting =====
+  app.use(globalLimiter);
+  app.use("/auth", authLimiter);
+
   // ===== 라우트 =====
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
@@ -137,9 +142,29 @@ async function main() {
     next();
   });
 
-  // packet 미들웨어: room last_activity_at 갱신
+  // packet 미들웨어: room last_activity_at 갱신 + 소켓 이벤트 rate limit
+  const SOCKET_COOLDOWNS = {
+    "game:submitQuestion": 3000,
+    "game:submitAnswer": 3000,
+    "game:heartQuestion": 1000,
+    "room:create": 5000,
+    "game:editQuestion": 2000,
+    "game:editAnswer": 2000,
+  };
+  const DEFAULT_COOLDOWN = 500;
+
   io.on("connection", (socket) => {
+    const lastEmit = {};
+
     socket.use(async (packet, next) => {
+      // rate limit
+      const event = packet[0];
+      const cooldown = SOCKET_COOLDOWNS[event] ?? DEFAULT_COOLDOWN;
+      const now = Date.now();
+      if (lastEmit[event] && now - lastEmit[event] < cooldown) return; // 조용히 drop
+      lastEmit[event] = now;
+
+      // room activity touch
       try {
         const sess = getSocketSession(socket.id);
         if (sess?.roomCode) await touchRoomByCode(sess.roomCode);

@@ -47,4 +47,7 @@ export const EVENTS = {
   GAME_HEART_Q_UPDATE: "game:heartQuestion:update",
 
   GAME_HOST_CHANGED: "game:hostChanged",
+
+  GAME_Q_SUBMITTED: "game:questionSubmitted",
+  GAME_A_SUBMITTED: "game:answerSubmitted",
 };

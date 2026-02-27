@@ -8,6 +8,7 @@ const {
   leaveRoom,
 } = require("../services/roomService");
 const { rejoinRoom } = require("../services/reconnectService");
+const { getGameStateForPlayer } = require("../services/gameService");
 const { touchRoom, attachSocket, getSocketSession, detachSocket } = require("../store/memoryStore");
 
 function ok(socket, event, data) {
@@ -103,7 +104,16 @@ module.exports = (io, socket) => {
       kickPrevSocket(io, prevSid, room.code);
 
       const state = await getRoomState(room.id);
-      ok(socket, "room:rejoin:res", { state });
+
+      // 게임 중이면 현재 phase에 맞는 게임 상태도 함께 전송
+      let gameState = null;
+      try {
+        gameState = await getGameStateForPlayer(room, player.id);
+      } catch (e) {
+        console.error("[rejoin gameState]", e?.message);
+      }
+
+      ok(socket, "room:rejoin:res", { state, game: gameState });
       io.to(room.code).emit("room:update", { ok: true, state });
     } catch (e) {
       fail(socket, "room:rejoin:res", e?.message || "room rejoin failed");

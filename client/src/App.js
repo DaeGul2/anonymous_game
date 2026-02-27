@@ -1,7 +1,7 @@
 // src/App.js
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Box, Button, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import HomePage from "./pages/HomePage";
 import RoomLobbyPage from "./pages/RoomLobbyPage";
 import GamePage from "./pages/GamePage";
@@ -138,6 +138,47 @@ function AuthGate({ children }) {
   return children;
 }
 
+function ReconnectOverlay() {
+  const { socketReady, state } = useRoomStore();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!socketReady && state?.room) {
+      const t = setTimeout(() => setShow(true), 500);
+      return () => clearTimeout(t);
+    }
+    setShow(false);
+  }, [socketReady, state]);
+
+  if (!show) return null;
+
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2500,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 2.5,
+        background: "rgba(0,0,0,0.65)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
+      <CircularProgress size={36} sx={{ color: "#fff" }} />
+      <Typography sx={{ color: "#fff", fontWeight: 900, fontSize: 16, letterSpacing: "-0.02em" }}>
+        다시 연결 중...
+      </Typography>
+      <Typography sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 600, fontSize: 12 }}>
+        잠시만 기다려주세요
+      </Typography>
+    </Box>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -151,6 +192,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="*" element={
           <AuthGate>
+            <ReconnectOverlay />
             <Routes>
               <Route path="/"           element={<HomePage />} />
               <Route path="/room/:code" element={<RoomLobbyPage />} />

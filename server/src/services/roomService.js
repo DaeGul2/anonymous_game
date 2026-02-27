@@ -228,6 +228,9 @@ async function joinRoom({ code, nickname, user_id, avatar }) {
       return { room, player: existing, is_rejoin: true };
     }
 
+    // 게임 진행 중이면 새 플레이어 입장 차단 (재접속은 위에서 처리됨)
+    if (room.status === "playing") throw new Error("게임 진행 중에는 참여할 수 없습니다");
+
     // 정원 체크 (AI 방은 인간 플레이어만 카운트)
     const humanCount = await Player.count({ where: { room_id: room.id, is_ai: false }, transaction: t });
     const humanMax = room.is_ai_room ? (room.max_players - room.ai_player_count) : room.max_players;

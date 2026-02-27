@@ -7,7 +7,8 @@
       "Bash(cd C:\\\\Users\\\\PC_1M\\\\Documents\\\\GitHub\\\\anonymous_game:*)",
       "WebFetch(domain:anonymous-game.store)",
       "Bash(npx react-scripts:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

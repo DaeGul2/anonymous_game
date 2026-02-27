@@ -321,6 +321,7 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
       endQuestionSubmit(io, room.code).catch((e) => console.error("[endQuestionSubmit]", e?.message));
       return;
     }
+    io.to(room.code).emit("game:questionSubmitted", { ok: true, submitted: humanSubmitted, total: humanPlayers.length });
   } else {
     const players = await Player.findAll({ where: { room_id: room.id } });
     const submittedCount = await Question.count({ where: { round_id: roundId } });
@@ -329,9 +330,8 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
       await endQuestionSubmit(io, room.code);
       return;
     }
+    io.to(room.code).emit("game:questionSubmitted", { ok: true, submitted: submittedCount, total: players.length });
   }
-
-  io.to(room.code).emit("game:questionSubmitted", { ok: true });
 }
 
 async function endQuestionSubmit(io, roomCode) {
@@ -478,7 +478,7 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
       clearTimers(room.code, ["answer_end"]);
       endAnswer(io, room.code).catch((e) => console.error("[endAnswer]", e?.message));
     } else {
-      io.to(room.code).emit("game:answerSubmitted", { ok: true });
+      io.to(room.code).emit("game:answerSubmitted", { ok: true, submitted: humanAnswered, total: humanPlayers.length });
     }
   } else {
     const players = await Player.findAll({ where: { room_id: room.id } });
@@ -486,7 +486,7 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
     if ((answeredCount - editingA) >= players.length) {
       await endAnswer(io, room.code);
     } else {
-      io.to(room.code).emit("game:answerSubmitted", { ok: true });
+      io.to(room.code).emit("game:answerSubmitted", { ok: true, submitted: answeredCount, total: players.length });
     }
   }
 }
@@ -749,6 +749,133 @@ async function editAnswer(roomCode, playerId) {
   addEditing(roomCode, "answer", playerId);
 }
 
+// ===== rejoin 시 현재 phase에 맞는 게임 상태 반환 =====
+async function getGameStateForPlayer(room, playerId) {
+  const phase = room.phase;
+  if (!phase || phase === "lobby") return null;
+
+  const rt = getRoomRuntime(room.code);
+  const game = rt?.game || {};
+  const roundId = game.roundId;
+  const roundNo = room.current_round_no || 0;
+
+  const base = {
+    phase,
+    round_no: roundNo,
+    deadline_at: room.phase_deadline_at ? new Date(room.phase_deadline_at).toISOString() : null,
+  };
+
+  if (phase === "question_submit" || phase === "preparing_ask") {
+    if (!roundId) return base;
+
+    const myQuestion = await Question.findOne({
+      where: { round_id: roundId, submitted_by_player_id: playerId },
+    });
+
+    return {
+      ...base,
+      question_submitted: !!myQuestion,
+      question_saved_text: myQuestion ? myQuestion.text : "",
+    };
+  }
+
+  if (phase === "ask") {
+    const qid = game.currentQuestionId;
+    if (!qid) return base;
+
+    const question = await Question.findByPk(qid);
+    const myAnswer = await Answer.findOne({
+      where: { question_id: qid, answered_by_player_id: playerId },
+    });
+
+    // 하트 정보
+    const hearts = await QuestionHeart.findAll({ where: { question_id: qid } });
+
+    return {
+      ...base,
+      current_question: question
+        ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
+        : null,
+      answer_submitted: !!myAnswer,
+      answer_saved_text: myAnswer ? myAnswer.text : "",
+      heart_count: hearts.length,
+      hearted_by: hearts.map((h) => h.player_id),
+    };
+  }
+
+  if (phase === "reveal") {
+    const qid = game.currentQuestionId;
+    if (!qid) return base;
+
+    const question = await Question.findByPk(qid);
+    const answers = await Answer.findAll({
+      where: { question_id: qid },
+      order: [["created_at", "ASC"]],
+    });
+    const isLast = (Number(game.questionIndex || 0) + 1) >= (game.questionIds?.length || 0);
+
+    const hearts = await QuestionHeart.findAll({ where: { question_id: qid } });
+
+    return {
+      ...base,
+      deadline_at: null,
+      reveal: {
+        question: question
+          ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
+          : null,
+        answers: shuffle(
+          answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
+        ),
+        is_last: isLast,
+      },
+      heart_count: hearts.length,
+      hearted_by: hearts.map((h) => h.player_id),
+    };
+  }
+
+  if (phase === "round_end") {
+    let heartSummary = [];
+    if (roundId) {
+      try {
+        const roundQuestions = await Question.findAll({
+          where: { round_id: roundId },
+          order: [["order_no", "ASC"]],
+        });
+        const qIds = roundQuestions.map((q) => q.id);
+        if (qIds.length > 0) {
+          const heartRows = await QuestionHeart.findAll({
+            where: { question_id: { [Op.in]: qIds } },
+            attributes: ["question_id", [sequelize.fn("COUNT", sequelize.col("id")), "cnt"]],
+            group: ["question_id"],
+            raw: true,
+          });
+          const heartMap = new Map(heartRows.map((h) => [h.question_id, Number(h.cnt)]));
+          heartSummary = roundQuestions
+            .map((q) => ({ text: q.text, hearts: heartMap.get(q.id) || 0 }))
+            .filter((q) => q.hearts > 0)
+            .sort((a, b) => b.hearts - a.hearts);
+        }
+      } catch (e) {
+        console.error("[rejoin heartSummary]", e?.message);
+      }
+    }
+
+    return {
+      ...base,
+      deadline_at: null,
+      round_end: {
+        ok: true,
+        round_no: roundNo,
+        host_player_id: room.host_player_id,
+        heart_summary: heartSummary,
+      },
+    };
+  }
+
+  // preparing_reveal 등 기타 과도기 상태
+  return base;
+}
+
 module.exports = {
   startRound,
   hostStartGame,
@@ -762,4 +889,5 @@ module.exports = {
   heartQuestion,
   editQuestion,
   editAnswer,
+  getGameStateForPlayer,
 };
