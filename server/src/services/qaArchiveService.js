@@ -75,7 +75,8 @@ async function archiveHumanQa(roomId) {
           player_count: playerCount,
           popularity_score: calcScore(hearts, playerCount),
         };
-      });
+      })
+      .filter((r) => r.heart_count > 0); // 하트 0개는 아카이브 안 함
 
     // --- 2) AI 질문(하트 있는 것만) + 인간 답변 ---
     const hearted_qids = [...heartMap.entries()]
@@ -128,9 +129,37 @@ async function archiveHumanQa(roomId) {
     if (rows.length > 0) {
       await QaArchive.bulkCreate(rows);
     }
+
+    // 임계값(5000행) 초과 시 popularity_score 낮은 것부터 삭제
+    await trimArchive();
   } catch (e) {
     // 아카이브 실패가 방 삭제를 막으면 안 됨
     console.error("[qa-archive] failed for room", roomId, e?.message || e);
+  }
+}
+
+const MAX_ARCHIVE_ROWS = 5000;
+
+async function trimArchive() {
+  try {
+    const total = await QaArchive.count();
+    if (total <= MAX_ARCHIVE_ROWS) return;
+
+    const excess = total - MAX_ARCHIVE_ROWS;
+    // popularity_score 낮은 것부터 삭제
+    const toDelete = await QaArchive.findAll({
+      attributes: ["id"],
+      order: [["popularity_score", "ASC"], ["created_at", "ASC"]],
+      limit: excess,
+    });
+
+    if (toDelete.length > 0) {
+      await QaArchive.destroy({
+        where: { id: { [Op.in]: toDelete.map((r) => r.id) } },
+      });
+    }
+  } catch (e) {
+    console.error("[qa-archive] trimArchive failed:", e?.message || e);
   }
 }
 

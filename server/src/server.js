@@ -7,8 +7,10 @@ const passport = require("passport");
 const { Strategy: GoogleStrategy } = require("passport-google-oauth20");
 const { Server } = require("socket.io");
 
+const connectSessionSequelize = require("connect-session-sequelize");
+
 const { env } = require("./config/env");
-const { initDb } = require("./config/db");
+const { sequelize, initDb } = require("./config/db");
 const { User } = require("./models");
 const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/auth");
@@ -77,9 +79,18 @@ async function main() {
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
-  // ===== 세션 =====
+  // ===== 세션 (MySQL 기반 스토어) =====
+  const SequelizeStore = connectSessionSequelize(session.Store);
+  const sessionStore = new SequelizeStore({
+    db: sequelize,
+    tableName: "sessions",
+    checkExpirationInterval: 15 * 60 * 1000, // 15분마다 만료 세션 정리
+    expiration: 30 * 24 * 60 * 60 * 1000,    // 30일
+  });
+
   const sessionMiddleware = session({
     secret: env.SESSION_SECRET,
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -180,6 +191,7 @@ async function main() {
   registerSockets(io);
 
   await initDb();
+  await sessionStore.sync(); // sessions 테이블 자동 생성
   startCleanupJob(io);
 
   server.listen(env.PORT, () => {

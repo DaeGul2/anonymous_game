@@ -215,6 +215,12 @@ async function startRound(io, roomCode) {
 
   if (room.phase !== "lobby" && room.phase !== "round_end") return;
 
+  // 최대 라운드 제한
+  const MAX_ROUNDS = 10;
+  if ((room.current_round_no || 0) >= MAX_ROUNDS) {
+    throw new Error(`최대 ${MAX_ROUNDS}라운드까지만 가능합니다`);
+  }
+
   const now = new Date();
   const deadline = new Date(Date.now() + env.QUESTION_SUBMIT_SECONDS * 1000);
 
@@ -272,7 +278,7 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
 
   const content = String(text || "").trim();
   if (!content) throw new Error("질문을 입력해줘");
-  if (content.length > 500) throw new Error("질문이 너무 김(최대 500자)");
+  if (content.length > 100) throw new Error("질문이 너무 김(최대 100자)");
 
   const validType = answer_type === "yesno" ? "yesno" : "free";
 
@@ -436,7 +442,7 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
   if (!roundId || !qid) throw new Error("현재 질문 정보가 없음");
 
   const content = String(text || "").trim();
-  if (content.length > 1000) throw new Error("답변이 너무 김(최대 1000자)");
+  if (content.length > 100) throw new Error("답변이 너무 김(최대 100자)");
 
   const existing = await Answer.findOne({
     where: { question_id: qid, answered_by_player_id: playerId },

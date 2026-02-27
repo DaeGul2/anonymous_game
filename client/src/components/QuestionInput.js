@@ -32,7 +32,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
     timerRef.current = setTimeout(() => setPending(false), 800);
   };
 
-  const maxChar = 300;
+  const maxChar = 100;
 
   if (!editing && (submitted || savedText)) {
     return (

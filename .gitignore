@@ -1,1 +1,3 @@
 /request/
+client/.env
+server/.env

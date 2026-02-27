@@ -51,6 +51,11 @@ module.exports = (io, socket) => {
       const userId = getUserId(socket);
       if (!userId) return fail(socket, "room:create:res", "로그인이 필요합니다");
 
+      // 유저당 활성 방 1개 제한
+      const { getMyActiveRoom } = require("../services/roomService");
+      const existing = await getMyActiveRoom(userId);
+      if (existing.room) return fail(socket, "room:create:res", "이미 참여 중인 방이 있습니다");
+
       const { room, player } = await createRoom({
         title, max_players, hostNickname: nickname, user_id: userId, avatar,
         ai_secret_key, ai_player_count,

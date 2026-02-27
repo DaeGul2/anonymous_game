@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
 
       // ✅ round_end 추가
       phase: {
-        type: DataTypes.ENUM("lobby", "question_submit", "ask", "reveal", "round_end"),
+        type: DataTypes.ENUM("lobby", "question_submit", "ask", "reveal", "round_end", "preparing_ask", "preparing_reveal"),
         allowNull: false,
         defaultValue: "lobby",
       },
