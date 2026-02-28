@@ -114,4 +114,4 @@ async function trimArchive() {
   }
 }
 
-module.exports = { archiveHumanQa };
+module.exports = { archiveHumanQa, trimArchive };

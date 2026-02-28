@@ -12,7 +12,8 @@
       "Bash(ls:*)",
       "Bash(git rm:*)",
       "Bash(python:*)",
-      "Bash(echo exit: $?:*)"
+      "Bash(echo exit: $?:*)",
+      "Bash(npx jest:*)"
     ]
   }
 }

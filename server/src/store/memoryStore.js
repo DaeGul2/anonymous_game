@@ -135,6 +135,11 @@ function clearEditing(roomCode, type) {
   }
 }
 
+function _resetForTesting() {
+  rooms.clear();
+  sockets.clear();
+}
+
 module.exports = {
   touchRoom,
   attachSocket,
@@ -149,4 +154,5 @@ module.exports = {
   removeEditing,
   getEditingCount,
   clearEditing,
+  _resetForTesting,
 };
