@@ -50,7 +50,8 @@ async function handleHostTimeout(io, roomCode, phase) {
 
   if (nextHost) {
     room.host_player_id = nextHost.id;
-    room.last_activity_at = new Date();
+    // last_activity_at를 갱신하지 않음 — 자동 위임은 실제 유저 활동이 아님
+    // 실제 유저 이벤트만 global middleware를 통해 touchRoomByCode() 호출
     await room.save();
 
     await broadcastRoom(io, room.id);

@@ -7,6 +7,8 @@ import RoomLobbyPage from "./pages/RoomLobbyPage";
 import GamePage from "./pages/GamePage";
 import LoginPage from "./pages/LoginPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import IntroPage from "./pages/IntroPage";
+import HowToPlayPage from "./pages/HowToPlayPage";
 import { useRoomStore } from "./state/useRoomStore";
 import "./App.css";
 
@@ -38,11 +40,18 @@ function ViewportFix() {
 function GlobalHeader() {
   const src = `${process.env.PUBLIC_URL}/logo.png`;
   const { user, logout } = useRoomStore();
+  const navigate = useNavigate();
 
   return (
     <header className="globalHeader" aria-label="global header">
       <div className="globalHeaderInner">
-        <img className="globalLogo" src={src} alt="익명게임" />
+        <img
+          className="globalLogo"
+          src={src}
+          alt="익명게임"
+          onClick={() => navigate("/")}
+          style={{ cursor: "pointer" }}
+        />
         {user && (
           <Button
             size="small"
@@ -190,6 +199,8 @@ export default function App() {
 
       <Routes>
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/intro" element={<IntroPage />} />
+        <Route path="/how-to-play" element={<HowToPlayPage />} />
         <Route path="*" element={
           <AuthGate>
             <ReconnectOverlay />

@@ -12,6 +12,7 @@ export const useRoomStore = create((set, get) => ({
 
   rooms: [],
   state: null,
+  roomDestroyed: false,
 
   game: {
     phase: null,
@@ -35,6 +36,7 @@ export const useRoomStore = create((set, get) => ({
     hearts_by_qid: {},  // { [qid]: { count: number, hearted: boolean } }
     submission_progress: null,  // { submitted: number, total: number }
     reactions: [],  // [{ id, emoji, text }]
+    revealedCards: [],  // 공개된 카드 인덱스 배열
   },
 
   error: "",
@@ -97,11 +99,19 @@ export const useRoomStore = create((set, get) => ({
     s.on(EVENTS.ROOM_JOIN_RES, applyState);
     s.on(EVENTS.ROOM_UPDATE, applyState);
 
-    // rejoin 실패는 신규 유저에겐 정상 — "방을 찾을 수 없음"만 에러 처리
+    // rejoin 실패 — 방에 있었는데 방이 사라졌으면 폭파 처리
     s.on(EVENTS.ROOM_REJOIN_RES, (res) => {
       if (!res?.ok) {
         if (res?.message?.includes("방을 찾을 수 없음")) {
-          set({ error: res.message });
+          const wasInRoom = !!get().state?.room;
+          try { localStorage.removeItem("ag:last_room"); } catch {}
+          if (wasInRoom) {
+            // 방에 있었는데 방이 폭파됨 → alert 트리거
+            set({ state: null, error: res.message, roomDestroyed: true });
+          } else {
+            // 처음 방문인데 방이 없음 → 에러만
+            set({ error: res.message });
+          }
         }
         return;
       }
@@ -150,10 +160,12 @@ export const useRoomStore = create((set, get) => ({
             }
           }
 
-          // reveal phase 복원
+          // reveal phase 복원 (rejoin 시 카드 전체 공개 상태)
           if (g.reveal) {
             gameRestore.reveal = g.reveal;
             gameRestore.current_question = null;
+            const revealAnswers = g.reveal?.answers || [];
+            gameRestore.revealedCards = Array.from({ length: revealAnswers.length }, (_, i) => i);
             const rqid = g.reveal?.question?.id;
             if (rqid && g.heart_count !== undefined) {
               const myPlayer = res.state?.players?.find((pl) => pl.user_id === get().user?.id);
@@ -190,7 +202,20 @@ export const useRoomStore = create((set, get) => ({
       if (!res?.ok) set({ error: res?.message || "비밀번호 변경 실패" });
     });
 
-    s.on(EVENTS.ROOM_DESTROYED, () => set({ state: null }));
+    s.on(EVENTS.ROOM_DESTROYED, () => {
+      try { localStorage.removeItem("ag:last_room"); } catch {}
+      set({
+        state: null,
+        roomDestroyed: true,
+        game: {
+          phase: null, deadline_at: null, round_no: 0,
+          current_question: null, reveal: null, round_end: null,
+          question_submitted: false, question_saved_text: "", question_saved_at: null, question_pending_text: "",
+          answer_submitted_by_qid: {}, answer_saved_text_by_qid: {}, answer_saved_at_by_qid: {}, answer_pending_text_by_qid: {},
+          hearts_by_qid: {}, submission_progress: null, reactions: [], revealedCards: [],
+        },
+      });
+    });
 
     // 다른 기기에서 같은 계정으로 접속 시 킥
     s.on(EVENTS.ROOM_KICKED, (data) => {
@@ -320,8 +345,24 @@ export const useRoomStore = create((set, get) => ({
             answers: p.answers || [],
             is_last: !!p.is_last,
           },
+          revealedCards: [],
         },
       }));
+    });
+
+    s.on(EVENTS.GAME_REVEAL_CARD_BROADCAST, (p) => {
+      if (p?.cardIndex == null) return;
+      set((st) => {
+        if (st.game.revealedCards.includes(p.cardIndex)) return st;
+        return { game: { ...st.game, revealedCards: [...st.game.revealedCards, p.cardIndex] } };
+      });
+    });
+
+    s.on(EVENTS.GAME_REVEAL_ALL_BROADCAST, () => {
+      set((st) => {
+        const total = st.game.reveal?.answers?.length || 0;
+        return { game: { ...st.game, revealedCards: Array.from({ length: total }, (_, i) => i) } };
+      });
     });
 
     s.on(EVENTS.GAME_ROUND_END, (p) => {
@@ -513,4 +554,9 @@ export const useRoomStore = create((set, get) => ({
   hostRevealNext: () => connectSocket().emit(EVENTS.GAME_HOST_REVEAL_NEXT),
   hostNextRound: () => connectSocket().emit(EVENTS.GAME_HOST_NEXT),
   hostEndGame: () => connectSocket().emit(EVENTS.GAME_HOST_END),
+
+  gameRevealCard: (cardIndex) => connectSocket().emit(EVENTS.GAME_REVEAL_CARD, { cardIndex }),
+  gameRevealAllCards: () => connectSocket().emit(EVENTS.GAME_REVEAL_ALL),
+
+  clearRoomDestroyed: () => set({ roomDestroyed: false }),
 }));

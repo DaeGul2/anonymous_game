@@ -413,6 +413,40 @@ export default function HomePage() {
         <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
       </Paper>
 
+      {/* ===== 게임 안내 링크 ===== */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ mt: 0.5, animation: "slideUp 0.5s var(--spring) both 0.2s" }}
+      >
+        <Button
+          fullWidth
+          onClick={() => nav("/intro")}
+          sx={{
+            fontWeight: 800, fontSize: 13, borderRadius: "var(--radius-lg)", py: 1.4,
+            background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.18)",
+            color: "var(--c-primary)", letterSpacing: "-0.01em",
+            "&:active": { transform: "scale(0.97)" },
+            transition: "transform 0.12s ease",
+          }}
+        >
+          🎭 게임 소개
+        </Button>
+        <Button
+          fullWidth
+          onClick={() => nav("/how-to-play")}
+          sx={{
+            fontWeight: 800, fontSize: 13, borderRadius: "var(--radius-lg)", py: 1.4,
+            background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.18)",
+            color: "#3B82F6", letterSpacing: "-0.01em",
+            "&:active": { transform: "scale(0.97)" },
+            transition: "transform 0.12s ease",
+          }}
+        >
+          📖 하는 방법
+        </Button>
+      </Stack>
+
       <CreateRoomModal open={open} onClose={() => setOpen(false)} onSubmit={onCreate} />
     </Box>
   );

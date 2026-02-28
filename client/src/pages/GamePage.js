@@ -242,12 +242,25 @@ export default function GamePage() {
     hostRevealNext,
     hostNextRound,
     hostEndGame,
+    gameRevealCard,
+    gameRevealAllCards,
     error,
+    roomDestroyed,
+    clearRoomDestroyed,
   } = useRoomStore();
 
   const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => { initSocket(); }, [initSocket]);
+
+  // 방 폭파 시 alert + 홈으로 이동
+  useEffect(() => {
+    if (roomDestroyed) {
+      alert("방이 폭파되었습니다.\n장시간 활동이 없어 방이 자동으로 종료되었어요.");
+      clearRoomDestroyed();
+      nav("/", { replace: true });
+    }
+  }, [roomDestroyed, clearRoomDestroyed, nav]);
 
   useEffect(() => {
     if (!code) return;
@@ -802,6 +815,9 @@ export default function GamePage() {
             key={game.reveal?.question?.id}
             question={game.reveal?.question}
             answers={game.reveal?.answers}
+            revealedCards={game.revealedCards}
+            isHost={isHost}
+            onRevealCard={gameRevealCard}
           />
 
           {/* 하트 버튼 (reveal 페이즈) */}
@@ -898,9 +914,32 @@ export default function GamePage() {
                 >
                   ⏳ 시간 안에 진행해주세요!
                 </Typography>
+                {game.revealedCards.length < (game.reveal?.answers?.length || 0) && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={gameRevealAllCards}
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: 14,
+                      borderRadius: 999,
+                      py: 1.2,
+                      mb: 1.2,
+                      letterSpacing: "-0.01em",
+                      borderColor: "rgba(124,58,237,0.3)",
+                      color: "var(--c-primary)",
+                      "&:hover": { borderColor: "rgba(124,58,237,0.5)", background: "rgba(124,58,237,0.04)" },
+                      "&:active": { transform: "scale(0.97)" },
+                      transition: "transform 0.12s ease",
+                    }}
+                  >
+                    한꺼번에 보기
+                  </Button>
+                )}
                 <Button
                   fullWidth
                   variant="contained"
+                  disabled={game.revealedCards.length < (game.reveal?.answers?.length || 0)}
                   onClick={hostRevealNext}
                   sx={{
                     fontWeight: 900,
@@ -908,11 +947,15 @@ export default function GamePage() {
                     borderRadius: 999,
                     py: 1.8,
                     letterSpacing: "-0.02em",
-                    background: game.reveal?.is_last
-                      ? "linear-gradient(135deg, #10B981, #34D399)"
-                      : "linear-gradient(135deg, #7C3AED, #EC4899)",
-                    boxShadow: game.reveal?.is_last
-                      ? "0 8px 28px rgba(16,185,129,0.42)"
+                    background: game.revealedCards.length < (game.reveal?.answers?.length || 0)
+                      ? "rgba(0,0,0,0.08)"
+                      : game.reveal?.is_last
+                        ? "linear-gradient(135deg, #10B981, #34D399)"
+                        : "linear-gradient(135deg, #7C3AED, #EC4899)",
+                    boxShadow: game.revealedCards.length < (game.reveal?.answers?.length || 0)
+                      ? "none"
+                      : game.reveal?.is_last
+                        ? "0 8px 28px rgba(16,185,129,0.42)"
                       : "0 8px 28px rgba(124,58,237,0.40)",
                     "&:active": { transform: "scale(0.97)" },
                     transition: "transform 0.12s ease",

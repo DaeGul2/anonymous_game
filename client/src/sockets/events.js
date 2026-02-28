@@ -53,6 +53,11 @@ export const EVENTS = {
   GAME_Q_SUBMITTED: "game:questionSubmitted",
   GAME_A_SUBMITTED: "game:answerSubmitted",
 
+  GAME_REVEAL_CARD: "game:revealCard",
+  GAME_REVEAL_CARD_BROADCAST: "game:revealCard:broadcast",
+  GAME_REVEAL_ALL: "game:revealAllCards",
+  GAME_REVEAL_ALL_BROADCAST: "game:revealAllCards:broadcast",
+
   GAME_REACTION: "game:reaction",
   GAME_REACTION_BROADCAST: "game:reaction:broadcast",
 };

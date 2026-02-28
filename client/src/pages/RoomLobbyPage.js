@@ -124,7 +124,7 @@ export default function RoomLobbyPage() {
   const nav = useNavigate();
   const {
     initSocket, roomJoin, roomRejoin, roomReady, roomLeave, gameStart,
-    roomUpdatePassword, state, user, error,
+    roomUpdatePassword, state, user, error, roomDestroyed, clearRoomDestroyed,
   } = useRoomStore();
 
   const [nickname, setNickname] = useState("");
@@ -147,6 +147,15 @@ export default function RoomLobbyPage() {
       nav(`/game/${state.room.code}`);
     }
   }, [state, nav]);
+
+  // 방 폭파 시 alert + 홈으로 이동
+  useEffect(() => {
+    if (roomDestroyed) {
+      alert("방이 폭파되었습니다.\n장시간 활동이 없어 방이 자동으로 종료되었어요.");
+      clearRoomDestroyed();
+      nav("/", { replace: true });
+    }
+  }, [roomDestroyed, clearRoomDestroyed, nav]);
 
   // 방 못 찾으면 홈으로 (닉네임/입장 관련 에러는 현재 화면에 유지)
   const stayErrors = ["닉네임", "꽉 찼", "참여할 수 없", "비밀번호"];
@@ -228,8 +237,8 @@ export default function RoomLobbyPage() {
         </Paper>
       )}
 
-      {/* 입장 전 */}
-      {!state?.room && (
+      {/* 입장 전 — 방을 찾을 수 없는 에러면 폼 숨김 */}
+      {!state?.room && !(error && !stayErrors.some((k) => error.includes(k))) && (
         <Paper
           className="glassCard section"
           sx={{ p: 2.5, animation: "slideUp 0.5s var(--spring) both" }}

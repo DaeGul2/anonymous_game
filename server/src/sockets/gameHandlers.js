@@ -120,6 +120,19 @@ module.exports = (io, socket) => {
     });
   });
 
+  // ===== 카드 까기 (reveal 답변 공개) =====
+  socket.on("game:revealCard", ({ cardIndex } = {}) => {
+    const sess = getSocketSession(socket.id);
+    if (!sess?.roomCode) return;
+    io.to(sess.roomCode).emit("game:revealCard:broadcast", { cardIndex });
+  });
+
+  socket.on("game:revealAllCards", () => {
+    const sess = getSocketSession(socket.id);
+    if (!sess?.roomCode) return;
+    io.to(sess.roomCode).emit("game:revealAllCards:broadcast", {});
+  });
+
   // ===== 질문 하트 토글 =====
   socket.on("game:heartQuestion", async ({ question_id } = {}) => {
     try {
