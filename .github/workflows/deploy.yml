@@ -27,7 +27,11 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
             cd ~/apps/anonymous_game
+            git checkout -- .
             git pull origin main
 
             # client 변경 감지 → 빌드
