@@ -109,11 +109,14 @@ module.exports = (io, socket) => {
   socket.on("game:reaction", ({ emoji, text } = {}) => {
     const sess = getSocketSession(socket.id);
     if (!sess?.roomCode) return;
+    const safeEmoji = (emoji || "").slice(0, 10);
+    const safeText = (text || "").slice(0, 50);
+    if (!safeEmoji && !safeText) return;
     io.to(sess.roomCode).emit("game:reaction:broadcast", {
       ok: true,
       id: Date.now() + Math.random(),
-      emoji: emoji || null,
-      text: text || null,
+      emoji: safeEmoji || null,
+      text: safeText || null,
     });
   });
 

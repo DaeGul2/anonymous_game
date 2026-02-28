@@ -89,7 +89,7 @@ export default function RoomList({ rooms, onClick }) {
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {r.title || "제목 없음"}{" "}
+                    {r.has_password && "🔒 "}{r.title || "제목 없음"}{" "}
                     <Typography component="span" className="subtle" sx={{ fontSize: 12 }}>
                       ({r.code})
                     </Typography>

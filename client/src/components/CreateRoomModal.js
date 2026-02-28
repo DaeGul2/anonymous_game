@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import {
   Box, Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle,
+  FormControl, InputLabel, MenuItem, Select,
   Slider, Stack, TextField, Typography, useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -19,10 +20,18 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
   const [aiCode, setAiCode] = useState("");
   const [aiCount, setAiCount] = useState(1);
 
+  // 비밀번호 방 옵션
+  const [pwSectionOpen, setPwSectionOpen] = useState(false);
+  const [password, setPassword] = useState("");
+
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const isAiMode = aiSectionOpen && aiCode.trim().length > 0;
+  const TITLE_MAX = 30;
+  const titleOver = title.length > TITLE_MAX;
+  const isPwMode = pwSectionOpen && password.length >= 4;
+  const pwInvalid = pwSectionOpen && password.length > 0 && (password.length < 4 || password.length > 8);
 
   const safeMaxPlayers = useMemo(() => {
     const n = Number(maxPlayers);
@@ -46,6 +55,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
         ai_secret_key: aiCode.trim(),
         ai_player_count: aiCount,
       }),
+      ...(isPwMode && { password }),
     });
 
   const inputSx = {
@@ -87,24 +97,32 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
           {/* 방 제목 */}
           <TextField
             autoFocus
-            label="방 제목"
+            label={`방 제목 (${title.length}/${TITLE_MAX})`}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
             fullWidth
-            inputProps={{ maxLength: 40 }}
+            inputProps={{ maxLength: TITLE_MAX }}
+            error={titleOver}
+            helperText={titleOver ? `방 제목은 ${TITLE_MAX}자까지 가능합니다` : ""}
             sx={inputSx}
           />
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
-            <TextField
-              label={isAiMode ? `총 인원 (인간 ${safeMaxPlayers - aiCount}명 + AI ${aiCount}명)` : "최대 인원"}
-              type="number"
-              value={maxPlayers}
-              onChange={(e) => setMaxPlayers(e.target.value)}
-              fullWidth
-              inputProps={{ min: isAiMode ? aiCount + 2 : 2, max: 20 }}
-              sx={inputSx}
-            />
+            <FormControl fullWidth sx={inputSx}>
+              <InputLabel>{isAiMode ? `총 인원 (인간 ${safeMaxPlayers - aiCount} + AI ${aiCount})` : "최대 인원"}</InputLabel>
+              <Select
+                value={maxPlayers}
+                label={isAiMode ? `총 인원 (인간 ${safeMaxPlayers - aiCount} + AI ${aiCount})` : "최대 인원"}
+                onChange={(e) => setMaxPlayers(e.target.value)}
+                sx={{ borderRadius: "var(--radius-lg)", fontWeight: 700 }}
+              >
+                {Array.from({ length: 19 }, (_, i) => i + 2).map((n) => (
+                  <MenuItem key={n} value={n} disabled={isAiMode && n < aiCount + 2}>
+                    {n}명
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="방장 닉네임"
               value={nickname}
@@ -200,6 +218,60 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
             </Box>
           </Collapse>
 
+          {/* 비밀번호 방 섹션 토글 */}
+          <Box>
+            <Button
+              size="small"
+              onClick={() => setPwSectionOpen((v) => !v)}
+              sx={{
+                fontWeight: 800,
+                fontSize: 12,
+                borderRadius: 999,
+                px: 1.8,
+                py: 0.6,
+                color: pwSectionOpen ? "var(--c-primary)" : "var(--text-2)",
+                background: pwSectionOpen
+                  ? "rgba(124,58,237,0.10)"
+                  : "rgba(0,0,0,0.04)",
+                border: pwSectionOpen
+                  ? "1px solid rgba(124,58,237,0.30)"
+                  : "1px solid rgba(0,0,0,0.10)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {pwSectionOpen ? "▲ 비밀번호 설정 닫기" : "🔒 비밀번호 설정"}
+            </Button>
+          </Box>
+
+          <Collapse in={pwSectionOpen}>
+            <Box
+              sx={{
+                p: 1.8,
+                borderRadius: "var(--radius-lg)",
+                background: "rgba(124,58,237,0.06)",
+                border: "1px solid rgba(124,58,237,0.18)",
+              }}
+            >
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", mb: 0.8 }}>
+                비밀번호를 설정하면 입장 시 비밀번호를 입력해야 합니다.
+              </Typography>
+              <TextField
+                label="비밀번호 (숫자 4~8자리)"
+                value={password}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                  setPassword(v);
+                }}
+                fullWidth
+                inputProps={{ maxLength: 8, inputMode: "numeric", pattern: "[0-9]*" }}
+                placeholder="숫자만 입력"
+                error={pwInvalid}
+                helperText={pwInvalid ? "4~8자리 숫자를 입력하세요" : ""}
+                sx={inputSx}
+              />
+            </Box>
+          </Collapse>
+
           <Typography sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", lineHeight: 1.6 }}>
             · 동일 방 내 닉네임 중복 불가&nbsp;&nbsp;· 제한 시간은 서버 기준&nbsp;&nbsp;· 비활성 방은 자동 종료
           </Typography>
@@ -219,7 +291,7 @@ export default function CreateRoomModal({ open, onClose, onSubmit }) {
         <Button
           variant="contained"
           onClick={submit}
-          disabled={!title.trim() || !nickname.trim()}
+          disabled={!title.trim() || !nickname.trim() || titleOver || pwInvalid}
           sx={{
             fontWeight: 900, fontSize: 14, borderRadius: 999, px: 3, py: 1.2,
             background: "linear-gradient(135deg, #7C3AED, #EC4899)",

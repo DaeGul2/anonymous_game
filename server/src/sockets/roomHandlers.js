@@ -6,10 +6,11 @@ const {
   getRoomState,
   setReady,
   leaveRoom,
+  updateRoomPassword,
 } = require("../services/roomService");
 const { rejoinRoom } = require("../services/reconnectService");
 const { getGameStateForPlayer } = require("../services/gameService");
-const { touchRoom, attachSocket, getSocketSession, detachSocket } = require("../store/memoryStore");
+const { touchRoom, attachSocket, getSocketSession, detachSocket, removeRoomRuntime } = require("../store/memoryStore");
 
 function ok(socket, event, data) {
   socket.emit(event, { ok: true, ...data });
@@ -46,7 +47,7 @@ module.exports = (io, socket) => {
   });
 
   // 2) 방 만들기
-  socket.on("room:create", async ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count } = {}) => {
+  socket.on("room:create", async ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count, password } = {}) => {
     try {
       const userId = getUserId(socket);
       if (!userId) return fail(socket, "room:create:res", "로그인이 필요합니다");
@@ -58,7 +59,7 @@ module.exports = (io, socket) => {
 
       const { room, player } = await createRoom({
         title, max_players, hostNickname: nickname, user_id: userId, avatar,
-        ai_secret_key, ai_player_count,
+        ai_secret_key, ai_player_count, password,
       });
 
       socket.join(room.code);
@@ -75,12 +76,12 @@ module.exports = (io, socket) => {
   });
 
   // 3) 방 입장
-  socket.on("room:join", async ({ code, nickname, avatar } = {}) => {
+  socket.on("room:join", async ({ code, nickname, avatar, password } = {}) => {
     try {
       const userId = getUserId(socket);
       if (!userId) return fail(socket, "room:join:res", "로그인이 필요합니다");
 
-      const { room, player } = await joinRoom({ code, nickname, user_id: userId, avatar });
+      const { room, player } = await joinRoom({ code, nickname, user_id: userId, avatar, password });
 
       socket.join(room.code);
       touchRoom(room.code, room.id);
@@ -146,7 +147,24 @@ module.exports = (io, socket) => {
     }
   });
 
-  // 6) 방 나가기
+  // 6) 비밀번호 변경/해제 (방장 전용, 로비에서만)
+  socket.on("room:updatePassword", async ({ password } = {}) => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode || !sess?.playerId) {
+        return fail(socket, "room:updatePassword:res", "방 세션 없음");
+      }
+
+      const room = await updateRoomPassword({ roomId: sess.roomId, playerId: sess.playerId, password: password || null });
+      const { broadcastRoom } = require("../services/gameService");
+      await broadcastRoom(io, room.id);
+      ok(socket, "room:updatePassword:res", {});
+    } catch (e) {
+      fail(socket, "room:updatePassword:res", e?.message || "password update failed");
+    }
+  });
+
+  // 7) 방 나가기
   socket.on("room:leave", async () => {
     try {
       const sess = getSocketSession(socket.id);
@@ -166,6 +184,7 @@ module.exports = (io, socket) => {
       ok(socket, "room:leave:res", { left: true });
 
       if (res.room_deleted) {
+        removeRoomRuntime(sess.roomCode);
         io.to(sess.roomCode).emit("room:destroyed", { ok: true });
         return;
       }

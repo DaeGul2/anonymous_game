@@ -1,6 +1,6 @@
 // src/pages/RoomLobbyPage.js
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Button, Chip, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Collapse, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import ReadyPanel from "../components/ReadyPanel";
 import AvatarPicker from "../components/AvatarPicker";
@@ -124,11 +124,15 @@ export default function RoomLobbyPage() {
   const nav = useNavigate();
   const {
     initSocket, roomJoin, roomRejoin, roomReady, roomLeave, gameStart,
-    state, user, error,
+    roomUpdatePassword, state, user, error,
   } = useRoomStore();
 
   const [nickname, setNickname] = useState("");
   const [avatarIdx, setAvatarIdx] = useState(loadSavedAvatar);
+  const [passwordNeeded, setPasswordNeeded] = useState(false);
+  const [joinPassword, setJoinPassword] = useState("");
+  const [pwEditOpen, setPwEditOpen] = useState(false);
+  const [pwEditValue, setPwEditValue] = useState("");
 
   useEffect(() => { initSocket(); }, [initSocket]);
 
@@ -145,7 +149,7 @@ export default function RoomLobbyPage() {
   }, [state, nav]);
 
   // 방 못 찾으면 홈으로 (닉네임/입장 관련 에러는 현재 화면에 유지)
-  const stayErrors = ["닉네임", "꽉 찼", "참여할 수 없"];
+  const stayErrors = ["닉네임", "꽉 찼", "참여할 수 없", "비밀번호"];
   useEffect(() => {
     if (error && !state?.room) {
       if (stayErrors.some((k) => error.includes(k))) return;
@@ -165,12 +169,21 @@ export default function RoomLobbyPage() {
   const readyCount = players.filter((p) => p.is_ready).length;
   const isHostMe = myPlayer?.id === state?.room?.host_player_id;
 
+  useEffect(() => {
+    if (error && error.includes("비밀번호가 필요합니다")) {
+      setPasswordNeeded(true);
+    }
+  }, [error]);
+
   const handleAvatarChange = (idx) => {
     setAvatarIdx(idx);
     saveAvatarChoice(idx);
   };
 
-  const doJoin = () => roomJoin({ code: code.toUpperCase(), nickname, avatar: avatarIdx });
+  const doJoin = () => roomJoin({
+    code: code.toUpperCase(), nickname, avatar: avatarIdx,
+    ...(passwordNeeded && joinPassword && { password: joinPassword }),
+  });
   const onExit = () => { roomLeave(); nav("/"); };
 
   return (
@@ -275,6 +288,26 @@ export default function RoomLobbyPage() {
                   },
                 }}
               />
+              {passwordNeeded && (
+                <TextField
+                  label="🔒 비밀번호 (숫자 4~8자리)"
+                  value={joinPassword}
+                  onChange={(e) => setJoinPassword(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  onKeyDown={(e) => e.key === "Enter" && nickname.trim() && doJoin()}
+                  inputProps={{ maxLength: 8, inputMode: "numeric", pattern: "[0-9]*" }}
+                  fullWidth
+                  sx={{
+                    mt: 1.2,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "var(--radius-lg)",
+                      fontWeight: 700, fontSize: 16,
+                      "& fieldset": { border: "1px solid rgba(239,68,68,0.35)" },
+                      "&:hover fieldset": { border: "1px solid rgba(239,68,68,0.55)" },
+                      "&.Mui-focused fieldset": { border: "1.5px solid rgba(239,68,68,0.70)" },
+                    },
+                  }}
+                />
+              )}
               {error && stayErrors.some((k) => error.includes(k)) && (
                 <Typography
                   sx={{
@@ -379,6 +412,66 @@ export default function RoomLobbyPage() {
               icon="📨"
             />
           </Paper>
+
+          {/* 방장: 비밀번호 설정 */}
+          {isHostMe && (
+            <Paper
+              className="glassCard section"
+              sx={{ p: 2, animation: "slideUp 0.48s var(--spring) both 0.04s" }}
+            >
+              <Button
+                size="small"
+                onClick={() => setPwEditOpen((v) => !v)}
+                sx={{
+                  fontWeight: 800, fontSize: 12, borderRadius: 999,
+                  px: 1.8, py: 0.6,
+                  color: pwEditOpen ? "var(--c-primary)" : "var(--text-2)",
+                  background: pwEditOpen ? "rgba(124,58,237,0.10)" : "rgba(0,0,0,0.04)",
+                  border: pwEditOpen ? "1px solid rgba(124,58,237,0.30)" : "1px solid rgba(0,0,0,0.10)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {state.room.has_password ? "🔒 비밀번호 변경/해제" : "🔓 비밀번호 설정"}
+              </Button>
+              <Collapse in={pwEditOpen}>
+                <Stack spacing={1.2} sx={{ mt: 1.5 }}>
+                  <TextField
+                    label="새 비밀번호 (숫자 4~8자리)"
+                    value={pwEditValue}
+                    onChange={(e) => setPwEditValue(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    inputProps={{ maxLength: 8, inputMode: "numeric", pattern: "[0-9]*" }}
+                    fullWidth
+                    placeholder="비워두면 비밀번호 해제"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "var(--radius-lg)", fontWeight: 700,
+                        "& fieldset": { border: "1px solid rgba(124,58,237,0.25)" },
+                        "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.45)" },
+                        "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.7)" },
+                      },
+                    }}
+                  />
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained" size="small"
+                      disabled={pwEditValue.length > 0 && (pwEditValue.length < 4 || pwEditValue.length > 8)}
+                      onClick={() => {
+                        roomUpdatePassword(pwEditValue || null);
+                        setPwEditValue("");
+                        setPwEditOpen(false);
+                      }}
+                      sx={{
+                        fontWeight: 800, fontSize: 13, borderRadius: 999, px: 2.5,
+                        background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                      }}
+                    >
+                      {pwEditValue ? "설정" : "해제"}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Collapse>
+            </Paper>
+          )}
 
           {/* 참여자 목록 */}
           <Paper

@@ -1,6 +1,7 @@
 // src/services/roomService.js
 const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt");
 const { Room, Player, User, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
 const { archiveHumanQa } = require("./qaArchiveService");
@@ -56,11 +57,12 @@ async function listRooms() {
     phase: r.phase,
     current_round_no: r.current_round_no,
     player_count: map.get(r.id) || 0,
+    has_password: r.has_password,
     updated_at: r.updated_at,
   }));
 }
 
-async function createRoom({ title, max_players, hostNickname, user_id, avatar, ai_secret_key, ai_player_count }) {
+async function createRoom({ title, max_players, hostNickname, user_id, avatar, ai_secret_key, ai_player_count, password }) {
   const nickname = normalizeNickname(hostNickname);
   const code = await generateUniqueRoomCode();
 
@@ -73,18 +75,29 @@ async function createRoom({ title, max_players, hostNickname, user_id, avatar, a
     if (aiCount < 1 || aiCount > 3) throw new Error("AI 플레이어는 1~3명");
   }
 
-  // 총 인원 = 유저 설정값 (AI가 그 안에서 자리 차지)
-  const rawMax = Number(max_players) || 8;
+  // 비밀번호 검증: 숫자 4~8자리
+  let hasPassword = false;
+  let passwordHash = null;
+  if (password) {
+    if (!/^\d{4,8}$/.test(password)) throw new Error("비밀번호는 숫자 4~8자리여야 합니다");
+    hasPassword = true;
+    passwordHash = await bcrypt.hash(password, 10);
+  }
+
+  // 총 인원 = 유저 설정값 (AI가 그 안에서 자리 차지), 2~20명 클램프
+  const rawMax = Math.min(Math.max(Number(max_players) || 8, 2), 20);
   const effectiveMax = isAiRoom ? Math.max(rawMax, aiCount + 2) : rawMax;
 
   return await sequelize.transaction(async (t) => {
     const room = await Room.create(
       {
         code,
-        title: (title || "").trim() || "익명게임 방",
+        title: (title || "").trim().slice(0, 30) || "익명게임 방",
         max_players: effectiveMax,
         is_ai_room: isAiRoom,
         ai_player_count: aiCount,
+        has_password: hasPassword,
+        password_hash: passwordHash,
         status: "lobby",
         phase: "lobby",
         last_activity_at: new Date(),
@@ -179,6 +192,7 @@ async function getRoomState(roomId) {
       current_round_no: room.current_round_no,
       host_player_id: room.host_player_id,
       phase_deadline_at: room.phase_deadline_at,
+      has_password: room.has_password,
     },
     players: players.map((p) => ({
       id: p.id,
@@ -192,7 +206,7 @@ async function getRoomState(roomId) {
   };
 }
 
-async function joinRoom({ code, nickname, user_id, avatar }) {
+async function joinRoom({ code, nickname, user_id, avatar, password }) {
   const nn = normalizeNickname(nickname);
 
   return await sequelize.transaction(async (t) => {
@@ -226,6 +240,13 @@ async function joinRoom({ code, nickname, user_id, avatar }) {
       await room.save({ transaction: t });
 
       return { room, player: existing, is_rejoin: true };
+    }
+
+    // 비밀번호 방: 신규 입장 시 검증 (재접속은 위에서 이미 return됨)
+    if (room.has_password) {
+      if (!password) throw new Error("비밀번호가 필요합니다");
+      const match = await bcrypt.compare(password, room.password_hash);
+      if (!match) throw new Error("비밀번호가 올바르지 않습니다");
     }
 
     // 게임 진행 중이면 새 플레이어 입장 차단 (재접속은 위에서 처리됨)
@@ -358,8 +379,17 @@ async function leaveRoom({ roomId, playerId }) {
     // 인간 플레이어가 없으면 방 폭파 (AI만 남은 경우 포함)
     const humanRemaining = remaining.filter((p) => !p.is_ai);
     if (humanRemaining.length === 0) {
+      // AI 유저 ID 수집 (CASCADE 전에)
+      const aiUserIds = remaining.filter((p) => p.is_ai).map((p) => p.user_id);
+
       await archiveHumanQa(roomId);
       await Room.destroy({ where: { id: roomId }, transaction: t });
+
+      // 고아 AI User 삭제 (Player CASCADE 후)
+      if (aiUserIds.length > 0) {
+        await User.destroy({ where: { id: { [Op.in]: aiUserIds } }, transaction: t });
+      }
+
       return { room: null, room_deleted: true };
     }
 
@@ -427,6 +457,24 @@ async function getMyActiveRoom(userId) {
   };
 }
 
+async function updateRoomPassword({ roomId, playerId, password }) {
+  const room = await Room.findByPk(roomId);
+  if (!room) throw new Error("방을 찾을 수 없음");
+  if (room.host_player_id !== playerId) throw new Error("방장만 비밀번호를 변경할 수 있습니다");
+  if (room.status !== "lobby") throw new Error("게임 중에는 비밀번호를 변경할 수 없습니다");
+
+  if (password) {
+    if (!/^\d{4,8}$/.test(password)) throw new Error("비밀번호는 숫자 4~8자리여야 합니다");
+    room.has_password = true;
+    room.password_hash = await bcrypt.hash(password, 10);
+  } else {
+    room.has_password = false;
+    room.password_hash = null;
+  }
+  await room.save();
+  return room;
+}
+
 module.exports = {
   listRooms,
   createRoom,
@@ -439,4 +487,5 @@ module.exports = {
   markDisconnected,
   markConnected,
   getMyActiveRoom,
+  updateRoomPassword,
 };

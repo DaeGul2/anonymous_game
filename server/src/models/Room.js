@@ -35,6 +35,10 @@ module.exports = (sequelize) => {
       // AI 포함 방
       is_ai_room:       { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       ai_player_count:  { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+
+      // 비밀번호 방
+      has_password:   { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      password_hash:  { type: DataTypes.STRING(255), allowNull: true },
     },
     {
       tableName: "rooms",

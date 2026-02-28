@@ -186,6 +186,10 @@ export const useRoomStore = create((set, get) => ({
       }
     });
 
+    s.on(EVENTS.ROOM_UPDATE_PASSWORD_RES, (res) => {
+      if (!res?.ok) set({ error: res?.message || "비밀번호 변경 실패" });
+    });
+
     s.on(EVENTS.ROOM_DESTROYED, () => set({ state: null }));
 
     // 다른 기기에서 같은 계정으로 접속 시 킥
@@ -420,12 +424,12 @@ export const useRoomStore = create((set, get) => ({
   // ===== actions =====
   roomList: () => connectSocket().emit(EVENTS.ROOM_LIST),
 
-  roomCreate: ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count }) => {
-    connectSocket().emit(EVENTS.ROOM_CREATE, { title, max_players, nickname, avatar, ai_secret_key, ai_player_count });
+  roomCreate: ({ title, max_players, nickname, avatar, ai_secret_key, ai_player_count, password }) => {
+    connectSocket().emit(EVENTS.ROOM_CREATE, { title, max_players, nickname, avatar, ai_secret_key, ai_player_count, password });
   },
 
-  roomJoin: ({ code, nickname, avatar }) => {
-    connectSocket().emit(EVENTS.ROOM_JOIN, { code, nickname, avatar });
+  roomJoin: ({ code, nickname, avatar, password }) => {
+    connectSocket().emit(EVENTS.ROOM_JOIN, { code, nickname, avatar, password });
   },
 
   roomRejoin: ({ code }) => {
@@ -499,6 +503,10 @@ export const useRoomStore = create((set, get) => ({
     set((st) => ({
       game: { ...st.game, reactions: st.game.reactions.filter((r) => r.id !== id) },
     }));
+  },
+
+  roomUpdatePassword: (password) => {
+    connectSocket().emit(EVENTS.ROOM_UPDATE_PASSWORD, { password: password || null });
   },
 
   gameStart: () => connectSocket().emit(EVENTS.GAME_START),

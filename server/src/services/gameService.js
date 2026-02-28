@@ -68,7 +68,8 @@ async function handleHostTimeout(io, roomCode, phase) {
     if (phase === "reveal") {
       await nextQuestionOrEnd(io, roomCode);
     } else if (phase === "round_end") {
-      await startRound(io, roomCode);
+      // 위임할 사람 없는 round_end → 혼자서 새 라운드 시작하는 대신 게임 종료
+      await hostEndGame(io, roomCode, room.host_player_id);
     }
   }
 }
@@ -191,6 +192,7 @@ async function broadcastRoom(io, roomId) {
         current_round_no: room.current_round_no,
         host_player_id: room.host_player_id,
         phase_deadline_at: room.phase_deadline_at,
+        has_password: room.has_password,
       },
       players: players.map((p) => ({
         id: p.id,
@@ -214,6 +216,10 @@ async function startRound(io, roomCode) {
   if (!room) throw new Error("방을 찾을 수 없음");
 
   if (room.phase !== "lobby" && room.phase !== "round_end") return;
+
+  // 인간 플레이어 최소 1명 (방어 코드 — 혼자서 라운드 시작 방지)
+  const humanCount = await Player.count({ where: { room_id: room.id, is_ai: false } });
+  if (humanCount < 1) return;
 
   // 최대 라운드 제한
   const MAX_ROUNDS = 10;
@@ -728,6 +734,12 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
 async function heartQuestion(io, { roomCode, playerId, question_id }) {
   if (!question_id || !playerId) return;
 
+  // 질문이 현재 방 소속인지 검증
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) return;
+  const q = await Question.findOne({ where: { id: question_id, room_id: room.id } });
+  if (!q) return;
+
   const existing = await QuestionHeart.findOne({ where: { question_id, player_id: playerId } });
   if (existing) {
     await existing.destroy();
@@ -896,4 +908,5 @@ module.exports = {
   editQuestion,
   editAnswer,
   getGameStateForPlayer,
+  broadcastRoom,
 };

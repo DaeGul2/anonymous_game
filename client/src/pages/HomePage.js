@@ -1,6 +1,6 @@
 // src/pages/HomePage.js
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import RoomList from "../components/RoomList";
 import CreateRoomModal from "../components/CreateRoomModal";
@@ -16,6 +16,9 @@ export default function HomePage() {
   const [nickname, setNickname] = useState("");
   const [q, setQ] = useState("");
   const [endedRoomMsg, setEndedRoomMsg] = useState(false);
+  const [showPublicOnly, setShowPublicOnly] = useState(false);
+  const [passwordNeeded, setPasswordNeeded] = useState(false);
+  const [joinPassword, setJoinPassword] = useState("");
 
   useEffect(() => { initSocket(); }, [initSocket]);
   useEffect(() => { roomList(); }, [roomList]);
@@ -62,18 +65,30 @@ export default function HomePage() {
 
   const onJoin = () => {
     if (!joinCode.trim() || !nickname.trim()) return;
-    roomJoin({ code: joinCode.trim().toUpperCase(), nickname });
+    roomJoin({
+      code: joinCode.trim().toUpperCase(),
+      nickname,
+      ...(passwordNeeded && joinPassword && { password: joinPassword }),
+    });
   };
 
+  // 에러에서 비밀번호 필요 감지
+  useEffect(() => {
+    if (error && error.includes("비밀번호가 필요합니다")) {
+      setPasswordNeeded(true);
+    }
+  }, [error]);
+
   const filteredRooms = useMemo(() => {
-    const list = Array.isArray(rooms) ? rooms : [];
+    let list = Array.isArray(rooms) ? rooms : [];
+    if (showPublicOnly) list = list.filter((r) => !r.has_password);
     const keyword = (q || "").trim().toLowerCase();
     if (!keyword) return list;
     return list.filter((r) => {
       const hay = `${r.title || ""} ${r.code || ""} ${r.status || ""} ${r.phase || ""}`.toLowerCase();
       return hay.includes(keyword);
     });
-  }, [rooms, q]);
+  }, [rooms, q, showPublicOnly]);
 
   return (
     <Box className="appShell">
@@ -260,6 +275,26 @@ export default function HomePage() {
             }}
           />
 
+          {passwordNeeded && (
+            <TextField
+              fullWidth
+              label="🔒 비밀번호 (숫자 4~8자리)"
+              value={joinPassword}
+              onChange={(e) => setJoinPassword(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              onKeyDown={(e) => e.key === "Enter" && joinCode.trim() && nickname.trim() && onJoin()}
+              inputProps={{ maxLength: 8, inputMode: "numeric", pattern: "[0-9]*" }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "var(--radius-lg)",
+                  fontWeight: 700,
+                  "& fieldset": { border: "1px solid rgba(239,68,68,0.35)" },
+                  "&:hover fieldset": { border: "1px solid rgba(239,68,68,0.55)" },
+                  "&.Mui-focused fieldset": { border: "1.5px solid rgba(239,68,68,0.70)" },
+                },
+              }}
+            />
+          )}
+
           <Button
             variant="contained"
             fullWidth
@@ -341,24 +376,39 @@ export default function HomePage() {
           </Button>
         </Stack>
 
-        <TextField
-          fullWidth
-          placeholder="🔍  제목, 코드로 검색"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          sx={{
-            mb: 1.5,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "var(--radius-lg)",
-              fontWeight: 700,
-              fontSize: 14,
-              background: "rgba(255,255,255,0.55)",
-              "& fieldset": { border: "1px solid rgba(0,0,0,0.10)" },
-              "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.30)" },
-              "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.55)" },
-            },
-          }}
-        />
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+          <TextField
+            fullWidth
+            placeholder="🔍  제목, 코드로 검색"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "var(--radius-lg)",
+                fontWeight: 700,
+                fontSize: 14,
+                background: "rgba(255,255,255,0.55)",
+                "& fieldset": { border: "1px solid rgba(0,0,0,0.10)" },
+                "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.30)" },
+                "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.55)" },
+              },
+            }}
+          />
+          <Chip
+            label="공개 방만"
+            clickable
+            onClick={() => setShowPublicOnly((v) => !v)}
+            sx={{
+              fontWeight: 800,
+              fontSize: 12,
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+              background: showPublicOnly ? "rgba(124,58,237,0.15)" : "rgba(0,0,0,0.04)",
+              border: showPublicOnly ? "1px solid rgba(124,58,237,0.35)" : "1px solid rgba(0,0,0,0.10)",
+              color: showPublicOnly ? "var(--c-primary)" : "var(--text-2)",
+            }}
+          />
+        </Stack>
 
         <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
       </Paper>

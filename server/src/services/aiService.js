@@ -1,4 +1,5 @@
 // src/services/aiService.js
+const { Op } = require("sequelize");
 const { env } = require("../config/env");
 const { Question, Answer, Round, QaArchive } = require("../models");
 
@@ -54,36 +55,52 @@ function formatArchiveSamples(samples) {
     .join("\n\n");
 }
 
-// 방의 Q&A 이력을 { question, answers[] } 배열로 반환
+// 방의 Q&A 이력을 { question, answers[] } 배열로 반환 (eager loading으로 최적화)
 async function getRoomHistory(roomId, currentRoundId, { includeCurrentRound = false, beforeOrderNo = null } = {}) {
   const rounds = await Round.findAll({
     where: { room_id: roomId },
     order: [["round_no", "ASC"]],
   });
 
-  const history = [];
-  for (const round of rounds) {
-    const isCurrent = round.id === currentRoundId;
+  // 대상 라운드 필터링
+  const targetRounds = rounds.filter((round) => {
+    if (round.id === currentRoundId) return includeCurrentRound;
+    return true;
+  });
+  if (targetRounds.length === 0) return [];
 
-    if (isCurrent && !includeCurrentRound) continue;
+  const targetRoundIds = targetRounds.map((r) => r.id);
+  const currentIncluded = targetRoundIds.includes(currentRoundId);
 
-    const qWhere = { round_id: round.id };
-    if (isCurrent && beforeOrderNo != null) {
-      const { Op } = require("sequelize");
-      qWhere.order_no = { [Op.gt]: 0, [Op.lt]: beforeOrderNo };
+  // 질문 조건 구성
+  let qWhere;
+  if (currentIncluded && beforeOrderNo != null) {
+    const otherRoundIds = targetRoundIds.filter((id) => id !== currentRoundId);
+    const conditions = [];
+    if (otherRoundIds.length > 0) {
+      conditions.push({ round_id: { [Op.in]: otherRoundIds } });
     }
-
-    const questions = await Question.findAll({
-      where: qWhere,
-      order: [["order_no", "ASC"]],
+    conditions.push({
+      round_id: currentRoundId,
+      order_no: { [Op.gt]: 0, [Op.lt]: beforeOrderNo },
     });
+    qWhere = { [Op.or]: conditions };
+  } else {
+    qWhere = { round_id: { [Op.in]: targetRoundIds } };
+  }
 
-    for (const q of questions) {
-      const answers = await Answer.findAll({ where: { question_id: q.id } });
-      const answerTexts = answers.map((a) => (a.text || "").trim()).filter((t) => t);
-      if (answerTexts.length > 0) {
-        history.push({ question: q.text, answers: answerTexts });
-      }
+  // 질문 + 답변 한 번에 조회 (N+1 → 1~2 쿼리)
+  const questions = await Question.findAll({
+    where: qWhere,
+    include: [{ model: Answer, as: "answers" }],
+    order: [["order_no", "ASC"]],
+  });
+
+  const history = [];
+  for (const q of questions) {
+    const answerTexts = (q.answers || []).map((a) => (a.text || "").trim()).filter((t) => t);
+    if (answerTexts.length > 0) {
+      history.push({ question: q.text, answers: answerTexts });
     }
   }
   return history;

@@ -1,6 +1,6 @@
 // src/sockets/systemHandlers.js
-const { detachSocket, getSocketSession, removeEditing } = require("../store/memoryStore");
-const { markDisconnected, transferHostIfNeeded } = require("../services/roomService");
+const { detachSocket, getSocketSession, removeEditing, getRoomRuntime } = require("../store/memoryStore");
+const { markDisconnected } = require("../services/roomService");
 
 module.exports = (io, socket) => {
   socket.on("ping", () => socket.emit("pong", { ts: Date.now() }));
@@ -15,10 +15,19 @@ module.exports = (io, socket) => {
         // 다시쓰기 editing 플래그 정리 (끊긴 채로 잔존 방지)
         removeEditing(sess.roomCode, "question", sess.playerId);
         removeEditing(sess.roomCode, "answer", sess.playerId);
-      }
-    } catch (e) {}
 
-    // 호스트 위임은 "명시적 leave"에서 처리. disconnect는 재접속을 고려해서 방장 교체 안 함.
+        // 빠른 재연결 레이스 컨디션 방어:
+        // 새 소켓이 이미 붙었으면 markDisconnected 안 함
+        const rt = getRoomRuntime(sess.roomCode);
+        const hasNewSocket = rt?.socketsByUserId?.get(sess.userId);
+        if (!hasNewSocket && sess.roomId) {
+          await markDisconnected({ roomId: sess.roomId, playerId: sess.playerId });
+        }
+      }
+    } catch (e) {
+      console.error("[disconnect]", e?.message || e);
+    }
+
     console.log("socket disconnected:", socket.id, reason);
   });
 };

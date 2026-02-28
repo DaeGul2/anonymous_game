@@ -76,8 +76,8 @@ async function main() {
       credentials: true,
     })
   );
-  app.use(express.json({ limit: "2mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+  app.use(express.json({ limit: "100kb" }));
+  app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
   // ===== 세션 (MySQL 기반 스토어) =====
   const SequelizeStore = connectSessionSequelize(session.Store);
@@ -159,6 +159,7 @@ async function main() {
     "game:submitAnswer": 3000,
     "game:heartQuestion": 1000,
     "room:create": 5000,
+    "room:list": 3000,
     "game:editQuestion": 2000,
     "game:editAnswer": 2000,
     "game:reaction": 1000,

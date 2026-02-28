@@ -1,9 +1,9 @@
 // src/services/cleanupService.js
 const { Op } = require("sequelize");
 const { env } = require("../config/env");
-const { Room } = require("../models");
+const { Room, Player, User } = require("../models");
 const { clearTimers } = require("./timerService");
-const { setGameRuntime } = require("../store/memoryStore");
+const { removeRoomRuntime } = require("../store/memoryStore");
 const { archiveHumanQa } = require("./qaArchiveService");
 
 async function touchRoomByCode(roomCode) {
@@ -28,15 +28,29 @@ async function cleanupExpiredRooms(io) {
       // 클라에 방 폭파 알림
       if (io) io.to(r.code).emit("room:destroyed", { ok: true, code: r.code });
 
-      // 타이머/런타임 정리(메모리)
-      clearTimers(r.code, ["question_submit_end", "answer_end", "reveal_end"]);
-      setGameRuntime(r.code, { roundId: null, questionIds: [], questionIndex: 0, currentQuestionId: null });
+      // 타이머 정리
+      clearTimers(r.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout"]);
+
+      // AI 유저 ID 수집 (CASCADE 전에)
+      const aiPlayers = await Player.findAll({
+        where: { room_id: r.id, is_ai: true },
+        attributes: ["user_id"],
+      });
+      const aiUserIds = aiPlayers.map((p) => p.user_id);
 
       // 인간 Q&A 아카이브 (CASCADE 전에)
       await archiveHumanQa(r.id);
 
       // DB 삭제 (연관 CASCADE로 players/rounds/questions/answers 같이 날아감)
       await Room.destroy({ where: { id: r.id } });
+
+      // 고아 AI User 삭제 (Player CASCADE 후)
+      if (aiUserIds.length > 0) {
+        await User.destroy({ where: { id: { [Op.in]: aiUserIds } } });
+      }
+
+      // 메모리 런타임 정리 (rooms Map에서 제거)
+      removeRoomRuntime(r.code);
 
       // 방에 붙어있던 소켓들 강제 out
       if (io) {

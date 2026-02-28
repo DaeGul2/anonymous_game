@@ -38,7 +38,8 @@ function keyQuestion({ code, roundNo }) {
   return `ag:${code}:r${roundNo}:question`;
 }
 function keyAnswer({ code, roundNo, qid, userId }) {
-  return `ag:${code}:r${roundNo}:q${qid}:a:${userId}`;
+  const h = btoa(String(userId)).slice(0, 8);
+  return `ag:${code}:r${roundNo}:q${qid}:a:${h}`;
 }
 
 const HOST_TIMEOUT_SECONDS = 60;

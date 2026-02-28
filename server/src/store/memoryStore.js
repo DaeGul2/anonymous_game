@@ -30,7 +30,7 @@ function touchRoom(roomCode, roomId) {
 }
 
 function attachSocket({ socketId, userId, roomCode, playerId, roomId }) {
-  sockets.set(socketId, { userId, roomCode, playerId });
+  sockets.set(socketId, { userId, roomCode, playerId, roomId });
 
   let prevSocketId = null;
   if (roomCode) {
