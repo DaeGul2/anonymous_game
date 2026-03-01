@@ -40,11 +40,8 @@ jobs:
               cd client && npm install && npm run build && cd ..
             fi
 
-            # server 의존성 변경 감지 → npm install
-            if git diff HEAD~1 --name-only | grep -q "server/package"; then
-              echo "Server deps changed, installing..."
-              cd server && npm install --production && cd ..
-            fi
+            # server 의존성 설치 (항상 실행 — npm ci가 lock 기준으로 빠르게 처리)
+            cd server && npm install --production && cd ..
 
             # PM2 재시작
             pm2 restart server || pm2 start server/src/server.js --name server
