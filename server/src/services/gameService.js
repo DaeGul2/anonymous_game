@@ -3,7 +3,7 @@ const { Op } = require("sequelize");
 const { env } = require("../config/env");
 const { Room, Player, Round, Question, Answer, QuestionHeart, User, sequelize } = require("../models");
 const { scheduleAt, clearTimers } = require("./timerService");
-const { setGameRuntime, getRoomRuntime, removeRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing } = require("../store/memoryStore");
+const { setGameRuntime, getRoomRuntime, removeRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing, clearChats, getChatsForPlayer } = require("../store/memoryStore");
 const aiService = require("./aiService");
 const { archiveHumanQa } = require("./qaArchiveService");
 
@@ -331,6 +331,10 @@ async function startRound(io, roomCode) {
     });
   });
 
+  // 새 라운드 시작 시 이전 라운드 채팅 정리
+  clearChats(room.code);
+  io.to(room.code).emit("chat:cleared", {});
+
   await broadcastRoom(io, room.id);
 
   io.to(room.code).emit("game:phase", {
@@ -626,9 +630,10 @@ async function endAnswer(io, roomCode) {
   const game = rt?.game || {};
   const isLast = (Number(game.questionIndex || 0) + 1) >= (game.questionIds?.length || 0);
 
-  const shuffledAnswers = shuffle(
-    answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
-  );
+  const nonEmptyAnswers = answers.filter((a) => (a.text || "").trim().length > 0);
+  const shuffledObjs = shuffle(nonEmptyAnswers);
+  const shuffledAnswers = shuffledObjs.map((a) => (a.text || "").trim());
+  const revealAnswerMap = shuffledObjs.map((a) => a.answered_by_player_id);
 
   // 카드 까기 타이머 (30초)
   const cardDeadline = new Date(Date.now() + env.REVEAL_CARD_SECONDS * 1000);
@@ -644,6 +649,9 @@ async function endAnswer(io, roomCode) {
     revealSubPhase: "cards",
     revealAnswerCount: shuffledAnswers.length,
     revealedCardSet: [],
+    revealAnswerMap,
+    revealAnswerTexts: shuffledAnswers,
+    revealQuestionText: question.text || "",
   });
 
   await broadcastRoom(io, room.id);
@@ -898,10 +906,12 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
   });
 
   clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout", "round_end_timeout", "reveal_cards_end", "reveal_viewing_end"]);
+  clearChats(room.code);
   setGameRuntime(room.code, { roundId: null, questionIds: [], questionIndex: 0, currentQuestionId: null });
 
   await broadcastRoom(io, room.id);
   io.to(room.code).emit("game:ended", { ok: true });
+  io.to(room.code).emit("chat:cleared", {});
 }
 
 async function heartQuestion(io, { roomCode, playerId, question_id }) {
@@ -1009,6 +1019,35 @@ async function getGameStateForPlayer(room, playerId) {
 
     const subPhase = game.revealSubPhase || "cards";
 
+    // revealAnswerMap이 있으면 저장된 순서 사용 (일관성 보장)
+    let orderedTexts;
+    if (game.revealAnswerMap?.length > 0) {
+      const byPlayer = new Map(answers.map((a) => [a.answered_by_player_id, a]));
+      orderedTexts = game.revealAnswerMap
+        .map((pid) => byPlayer.get(pid))
+        .filter(Boolean)
+        .map((a) => (a.text || "").trim());
+    } else {
+      orderedTexts = shuffle(
+        answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
+      );
+    }
+
+    // 채팅 상태 복원
+    const myChats = getChatsForPlayer(room.code, playerId);
+    const chatsForClient = myChats.map((c) => ({
+      chatId: c.chatId,
+      questionText: c.questionText || "",
+      answerText: c.answerText,
+      cardIndex: c.cardIndex,
+      messages: c.messages.map((m) => ({
+        id: m.id,
+        text: m.text,
+        sentAt: m.sentAt,
+        isMine: m.senderPlayerId === playerId,
+      })),
+    }));
+
     return {
       ...base,
       deadline_at: room.phase_deadline_at ? new Date(room.phase_deadline_at).toISOString() : null,
@@ -1017,13 +1056,12 @@ async function getGameStateForPlayer(room, playerId) {
         question: question
           ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
           : null,
-        answers: shuffle(
-          answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
-        ),
+        answers: orderedTexts,
         is_last: isLast,
       },
       heart_count: hearts.length,
       hearted_by: hearts.map((h) => h.player_id),
+      chats: chatsForClient,
     };
   }
 

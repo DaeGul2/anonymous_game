@@ -39,6 +39,11 @@ export const useRoomStore = create((set, get) => ({
     revealedCards: [],  // 공개된 카드 인덱스 배열
     revealSubPhase: null,  // "cards" | "viewing"
     revealTotalSeconds: 30,  // 현재 서브페이즈의 총 시간 (TimerBar용)
+
+    // 익명 채팅
+    chats: {},           // { [chatId]: { chatId, answerText, cardIndex, messages: [], unreadCount } }
+    activeChatId: null,  // 현재 열린 대화
+    chatListOpen: false, // FAB 메뉴 열림 여부
   },
 
   error: "",
@@ -181,6 +186,21 @@ export const useRoomStore = create((set, get) => ({
                 },
               };
             }
+            // 채팅 상태 복원
+            if (Array.isArray(g.chats) && g.chats.length > 0) {
+              const chatsMap = {};
+              for (const c of g.chats) {
+                chatsMap[c.chatId] = {
+                  chatId: c.chatId,
+                  questionText: c.questionText || "",
+                  answerText: c.answerText || "",
+                  cardIndex: c.cardIndex,
+                  messages: c.messages || [],
+                  unreadCount: 0,
+                };
+              }
+              gameRestore.chats = chatsMap;
+            }
           }
 
           // round_end phase 복원
@@ -217,6 +237,7 @@ export const useRoomStore = create((set, get) => ({
           question_submitted: false, question_saved_text: "", question_saved_at: null, question_pending_text: "",
           answer_submitted_by_qid: {}, answer_saved_text_by_qid: {}, answer_saved_at_by_qid: {}, answer_pending_text_by_qid: {},
           hearts_by_qid: {}, submission_progress: null, reactions: [], revealedCards: [], revealSubPhase: null, revealTotalSeconds: 30,
+          chats: {}, activeChatId: null, chatListOpen: false,
         },
       });
     });
@@ -303,6 +324,9 @@ export const useRoomStore = create((set, get) => ({
               current_question: null,
               reveal: null,
               round_end: null,
+              chats: {},
+              activeChatId: null,
+              chatListOpen: false,
             } : {
               question_pending_text: "",
             }),
@@ -408,6 +432,9 @@ export const useRoomStore = create((set, get) => ({
           reveal: null,
           round_end: null,
           reactions: [],
+          chats: {},
+          activeChatId: null,
+          chatListOpen: false,
         },
       }));
     });
@@ -471,6 +498,60 @@ export const useRoomStore = create((set, get) => ({
         game: {
           ...st.game,
           reactions: [...st.game.reactions, { id: p.id, emoji: p.emoji, text: p.text }].slice(-20),
+        },
+      }));
+    });
+
+    // ====== 익명 채팅 ======
+    s.on(EVENTS.CHAT_STARTED, (p) => {
+      if (!p?.chatId) return;
+      set((st) => ({
+        game: {
+          ...st.game,
+          chats: {
+            ...st.game.chats,
+            [p.chatId]: {
+              chatId: p.chatId,
+              questionText: p.questionText || "",
+              answerText: p.answerText || "",
+              cardIndex: p.cardIndex,
+              messages: [],
+              unreadCount: 1,
+            },
+          },
+        },
+      }));
+    });
+
+    s.on(EVENTS.CHAT_RECEIVE, (p) => {
+      if (!p?.chatId || !p?.message) return;
+      set((st) => {
+        const chat = st.game.chats[p.chatId];
+        if (!chat) return st;
+        const isActive = st.game.activeChatId === p.chatId;
+        return {
+          game: {
+            ...st.game,
+            chats: {
+              ...st.game.chats,
+              [p.chatId]: {
+                ...chat,
+                messages: [...chat.messages, p.message],
+                unreadCount: isActive ? 0 : chat.unreadCount + (p.message.isMine ? 0 : 1),
+              },
+            },
+          },
+        };
+      });
+    });
+
+    s.on(EVENTS.CHAT_CLEARED, () => {
+      set((st) => ({
+        game: {
+          ...st.game,
+          chats: {},
+          activeChatId: null,
+          chatListOpen: false,
         },
       }));
     });
@@ -575,6 +656,73 @@ export const useRoomStore = create((set, get) => ({
 
   gameRevealCard: (cardIndex) => connectSocket().emit(EVENTS.GAME_REVEAL_CARD, { cardIndex }),
   gameRevealAllCards: () => connectSocket().emit(EVENTS.GAME_REVEAL_ALL),
+
+  // ===== 익명 채팅 =====
+  chatStart: (cardIndex) => {
+    connectSocket().emit(EVENTS.CHAT_START, { cardIndex }, (res) => {
+      if (!res?.ok) {
+        set({ error: res?.message || "채팅 시작 실패" });
+        return;
+      }
+      set((st) => ({
+        game: {
+          ...st.game,
+          chats: {
+            ...st.game.chats,
+            [res.chatId]: {
+              chatId: res.chatId,
+              questionText: res.questionText || "",
+              answerText: res.answerText || "",
+              cardIndex: res.cardIndex,
+              messages: res.messages || [],
+              unreadCount: 0,
+            },
+          },
+          activeChatId: res.chatId,
+          chatListOpen: false,
+        },
+        error: "",
+      }));
+    });
+  },
+
+  chatSend: (chatId, text) => {
+    connectSocket().emit(EVENTS.CHAT_SEND, { chatId, text }, (res) => {
+      if (!res?.ok) {
+        set({ error: res?.message || "메시지 전송 실패" });
+      }
+    });
+  },
+
+  chatOpen: (chatId) => {
+    set((st) => {
+      const chat = st.game.chats[chatId];
+      if (!chat) return st;
+      return {
+        game: {
+          ...st.game,
+          activeChatId: chatId,
+          chatListOpen: false,
+          chats: {
+            ...st.game.chats,
+            [chatId]: { ...chat, unreadCount: 0 },
+          },
+        },
+      };
+    });
+  },
+
+  chatClose: () => {
+    set((st) => ({
+      game: { ...st.game, activeChatId: null },
+    }));
+  },
+
+  chatToggleList: () => {
+    set((st) => ({
+      game: { ...st.game, chatListOpen: !st.game.chatListOpen, activeChatId: null },
+    }));
+  },
 
   clearRoomDestroyed: () => set({ roomDestroyed: false }),
 }));

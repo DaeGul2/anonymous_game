@@ -42,6 +42,10 @@
   from { transform: translateY(28px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+@keyframes chatSheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; }

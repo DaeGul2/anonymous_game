@@ -62,4 +62,10 @@ export const EVENTS = {
 
   GAME_REACTION: "game:reaction",
   GAME_REACTION_BROADCAST: "game:reaction:broadcast",
+
+  CHAT_START: "chat:start",
+  CHAT_STARTED: "chat:started",
+  CHAT_RECEIVE: "chat:receive",
+  CHAT_SEND: "chat:send",
+  CHAT_CLEARED: "chat:cleared",
 };

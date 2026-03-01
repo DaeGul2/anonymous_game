@@ -78,7 +78,7 @@ function PostItInner({ postit, isHost, idx, isOverlay }) {
   );
 }
 
-export default function AnonymousReveal({ question, answers, revealedCards = [], isHost, onRevealCard }) {
+export default function AnonymousReveal({ question, answers, revealedCards = [], isHost, onRevealCard, onStartChat }) {
   const list = Array.isArray(answers) ? answers : [];
   const revealedSet = new Set(revealedCards);
 
@@ -228,6 +228,32 @@ export default function AnonymousReveal({ question, answers, revealedCards = [],
                   <Typography sx={{ fontWeight: 800, fontSize: { xs: 15, sm: 16 }, letterSpacing: "-0.02em", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {text || "(내용 없음)"}
                   </Typography>
+                  {onStartChat && (
+                    <Box
+                      onClick={(e) => { e.stopPropagation(); onStartChat(idx); }}
+                      sx={{
+                        mt: 1,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        px: 1.4,
+                        py: 0.5,
+                        borderRadius: 999,
+                        background: "rgba(124,58,237,0.08)",
+                        border: "1px solid rgba(124,58,237,0.18)",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        userSelect: "none",
+                        "&:hover": { background: "rgba(124,58,237,0.14)", border: "1px solid rgba(124,58,237,0.30)" },
+                        "&:active": { transform: "scale(0.95)" },
+                      }}
+                    >
+                      <Typography sx={{ fontSize: 13, lineHeight: 1 }}>💬</Typography>
+                      <Typography sx={{ fontSize: 11, fontWeight: 800, color: "var(--c-primary)", letterSpacing: "-0.01em" }}>
+                        대화 걸기
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Stack>
 

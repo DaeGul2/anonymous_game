@@ -39,6 +39,9 @@ function attachSocket({ socketId, userId, roomCode, playerId, roomId }) {
     const old = r.socketsByUserId.get(userId);
     if (old && old !== socketId) prevSocketId = old;
     r.socketsByUserId.set(userId, socketId);
+    // playerId → userId 매핑 (채팅 라우팅용)
+    if (!r.userIdByPlayerId) r.userIdByPlayerId = new Map();
+    if (playerId && userId) r.userIdByPlayerId.set(playerId, userId);
     r.updatedAt = Date.now();
   }
   return prevSocketId;
@@ -135,6 +138,48 @@ function clearEditing(roomCode, type) {
   }
 }
 
+// ===== 익명 채팅 =====
+function _ensureChats(roomCode) {
+  const r = ensureRoomRuntime(roomCode);
+  if (!r.chats) r.chats = new Map();
+  return r.chats;
+}
+
+function createChat(roomCode, chatData) {
+  const chats = _ensureChats(roomCode);
+  chats.set(chatData.chatId, { ...chatData, messages: [] });
+  return chats.get(chatData.chatId);
+}
+
+function getChat(roomCode, chatId) {
+  const r = rooms.get(roomCode);
+  return r?.chats?.get(chatId) || null;
+}
+
+function getChatsForPlayer(roomCode, playerId) {
+  const r = rooms.get(roomCode);
+  if (!r?.chats) return [];
+  const result = [];
+  for (const c of r.chats.values()) {
+    if (c.initiatorPlayerId === playerId || c.responderPlayerId === playerId) {
+      result.push(c);
+    }
+  }
+  return result;
+}
+
+function addChatMessage(roomCode, chatId, msg) {
+  const chat = getChat(roomCode, chatId);
+  if (!chat) return null;
+  chat.messages.push(msg);
+  return msg;
+}
+
+function clearChats(roomCode) {
+  const r = rooms.get(roomCode);
+  if (r?.chats) r.chats.clear();
+}
+
 function _resetForTesting() {
   rooms.clear();
   sockets.clear();
@@ -154,5 +199,10 @@ module.exports = {
   removeEditing,
   getEditingCount,
   clearEditing,
+  createChat,
+  getChat,
+  getChatsForPlayer,
+  addChatMessage,
+  clearChats,
   _resetForTesting,
 };

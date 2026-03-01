@@ -163,6 +163,8 @@ async function main() {
     "game:editQuestion": 2000,
     "game:editAnswer": 2000,
     "game:reaction": 1000,
+    "chat:start": 1000,
+    "chat:send": 500,
   };
   const DEFAULT_COOLDOWN = 500;
 

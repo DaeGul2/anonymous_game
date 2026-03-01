@@ -8,6 +8,8 @@ import QuestionInput from "../components/QuestionInput";
 import AnswerInput from "../components/AnswerInput";
 import ShareButton from "../components/ShareButton";
 import ReactionFAB from "../components/ReactionFAB";
+import ChatFAB from "../components/ChatFAB";
+import ChatWindow from "../components/ChatWindow";
 import html2canvas from "html2canvas";
 import { useRoomStore } from "../state/useRoomStore";
 
@@ -245,6 +247,7 @@ export default function GamePage() {
     hostEndGame,
     gameRevealCard,
     gameRevealAllCards,
+    chatStart,
     error,
     roomDestroyed,
     clearRoomDestroyed,
@@ -849,6 +852,7 @@ export default function GamePage() {
               revealedCards={game.revealedCards}
               isHost={isHost}
               onRevealCard={game.revealSubPhase === "cards" ? gameRevealCard : undefined}
+              onStartChat={game.revealSubPhase === "viewing" ? chatStart : undefined}
             />
           </Box>
 
@@ -1276,6 +1280,8 @@ export default function GamePage() {
       )}
 
       <ReactionFAB />
+      <ChatFAB />
+      <ChatWindow />
 
       <Dialog
         open={leaveDialogOpen}
