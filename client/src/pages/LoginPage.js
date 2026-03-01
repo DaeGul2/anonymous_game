@@ -129,23 +129,59 @@ export default function LoginPage() {
         <Typography sx={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", fontWeight: 600 }}>
           로그인하면 연결이 끊겨도 자동으로 복구됩니다
         </Typography>
+
+        {/* 익명 보장 안내 */}
+        <Box
+          sx={{
+            width: "100%",
+            p: 1.5,
+            borderRadius: "var(--radius-lg)",
+            background: "rgba(124,58,237,0.06)",
+            border: "1px solid rgba(124,58,237,0.12)",
+          }}
+        >
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--c-primary)", mb: 0.3 }}>
+            🔒 철저한 익명으로 진행됩니다
+          </Typography>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-3)", lineHeight: 1.6 }}>
+            Google 로그인은 본인 인증용으로만 사용되며,
+            게임 내 질문·답변에 개인정보가 연결되지 않습니다.
+          </Typography>
+        </Box>
       </Box>
 
-      <Typography
-        component="a"
-        href="/privacy"
-        sx={{
-          mt: 2,
-          fontSize: 11,
-          fontWeight: 600,
-          color: "var(--text-3)",
-          textDecoration: "underline",
-          textUnderlineOffset: 3,
-          "&:hover": { color: "var(--c-primary)" },
-        }}
-      >
-        개인정보처리방침
-      </Typography>
+      {/* 법적 링크 */}
+      <Box sx={{ display: "flex", gap: 1.5, mt: 2 }}>
+        <Typography
+          component="a"
+          href="/privacy"
+          sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--text-3)",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+            "&:hover": { color: "var(--c-primary)" },
+          }}
+        >
+          개인정보처리방침
+        </Typography>
+        <Typography sx={{ fontSize: 11, color: "var(--text-3)" }}>|</Typography>
+        <Typography
+          component="a"
+          href="/terms"
+          sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--text-3)",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+            "&:hover": { color: "var(--c-primary)" },
+          }}
+        >
+          이용약관
+        </Typography>
+      </Box>
     </Box>
   );
 }

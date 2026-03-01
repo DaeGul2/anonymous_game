@@ -1,12 +1,27 @@
 // src/pages/PrivacyPage.js
 import React from "react";
-import { Box, Typography, Paper } from "@mui/material";
+import { Box, Typography, Paper, IconButton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 export default function PrivacyPage() {
+  const navigate = useNavigate();
   return (
     <Box className="appShell" sx={{ pb: 6 }}>
-      <Box className="pageHeader">
-        <Typography className="pageTitle">📄 개인정보처리방침</Typography>
+      <Box className="pageHeader" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <IconButton
+          onClick={() => navigate(-1)}
+          sx={{
+            width: 36, height: 36,
+            background: "rgba(255,255,255,0.6)",
+            border: "1px solid rgba(0,0,0,0.08)",
+            borderRadius: "12px",
+            fontSize: 18,
+            "&:hover": { background: "rgba(255,255,255,0.85)" },
+          }}
+        >
+          ←
+        </IconButton>
+        <Typography className="pageTitle" sx={{ mb: "0 !important" }}>📄 개인정보처리방침</Typography>
       </Box>
 
       {/* 핵심 강조 */}
@@ -19,7 +34,7 @@ export default function PrivacyPage() {
         }}
       >
         <Typography sx={{ fontWeight: 950, fontSize: 18, letterSpacing: "-0.03em", mb: 1, color: "#7C3AED" }}>
-          🔒 모든 질문과 답변은 100% 익명입니다
+          🔒 모든 질문과 답변은 철저히 익명으로 진행됩니다
         </Typography>
         <Typography sx={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", lineHeight: 1.7 }}>
           익명게임은 질문과 답변의 <b>텍스트만</b> 수집하며, 누가 작성했는지는 저장하지 않습니다.

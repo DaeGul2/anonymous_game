@@ -7,6 +7,7 @@ import RoomLobbyPage from "./pages/RoomLobbyPage";
 import GamePage from "./pages/GamePage";
 import LoginPage from "./pages/LoginPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import IntroPage from "./pages/IntroPage";
 import HowToPlayPage from "./pages/HowToPlayPage";
 import { useRoomStore } from "./state/useRoomStore";
@@ -199,6 +200,7 @@ export default function App() {
 
       <Routes>
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/intro" element={<IntroPage />} />
         <Route path="/how-to-play" element={<HowToPlayPage />} />
         <Route path="*" element={
