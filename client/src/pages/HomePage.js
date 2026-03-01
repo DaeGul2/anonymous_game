@@ -92,22 +92,21 @@ export default function HomePage() {
   }, [rooms, q, showPublicOnly]);
 
   return (
-    <Box className="appShell">
+    <Box className="appShell" sx={{ "& .section": { my: "8px" } }}>
 
       {/* ===== 히어로 섹션 ===== */}
       <Box
         sx={{
           textAlign: "center",
-          pt: 1,
-          pb: 0.5,
-          mb: 1,
+          pt: 0.5,
+          mb: 0.5,
           animation: "slideUp 0.55s var(--spring) both",
         }}
       >
         <Typography
           sx={{
             fontWeight: 950,
-            fontSize: { xs: 28, sm: 34 },
+            fontSize: { xs: 24, sm: 28 },
             letterSpacing: "-0.04em",
             lineHeight: 1.1,
             background: "linear-gradient(135deg, #7C3AED, #EC4899, #3B82F6)",
@@ -115,14 +114,14 @@ export default function HomePage() {
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             animation: "bgShift 5s ease infinite",
-            mb: 0.8,
+            mb: 0.5,
           }}
         >
           익명게임
         </Typography>
         <Typography
           sx={{
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 600,
             color: "var(--text-2)",
             letterSpacing: "-0.01em",
@@ -192,7 +191,7 @@ export default function HomePage() {
             fontWeight: 900,
             fontSize: 17,
             borderRadius: 999,
-            py: 1.8,
+            py: 1.4,
             letterSpacing: "-0.02em",
             background: "linear-gradient(135deg, #7C3AED, #EC4899, #3B82F6)",
             backgroundSize: "200% 200%",
@@ -209,7 +208,7 @@ export default function HomePage() {
       {/* ===== 공개 방 목록 ===== */}
       <Paper
         className="glassCard section"
-        sx={{ p: 2.2, animation: "slideUp 0.5s var(--spring) both 0.1s" }}
+        sx={{ p: 1.8, animation: "slideUp 0.5s var(--spring) both 0.1s" }}
       >
         <Stack
           direction="row"
@@ -301,7 +300,7 @@ export default function HomePage() {
       {/* ===== 코드로 입장 ===== */}
       <Paper
         className="glassCard section"
-        sx={{ p: 2.2, animation: "slideUp 0.5s var(--spring) both 0.15s" }}
+        sx={{ p: 1.8, animation: "slideUp 0.5s var(--spring) both 0.15s" }}
       >
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.8 }}>
           <Box
