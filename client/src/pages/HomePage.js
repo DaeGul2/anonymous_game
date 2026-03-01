@@ -206,10 +206,102 @@ export default function HomePage() {
         </Button>
       </Box>
 
-      {/* ===== 코드로 입장 ===== */}
+      {/* ===== 공개 방 목록 ===== */}
       <Paper
         className="glassCard section"
         sx={{ p: 2.2, animation: "slideUp 0.5s var(--spring) both 0.1s" }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 1.5 }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography sx={{ fontWeight: 950, fontSize: 15, letterSpacing: "-0.02em" }}>
+              🏠 공개 방 목록
+            </Typography>
+            <Box
+              sx={{
+                px: 1.2,
+                py: 0.25,
+                borderRadius: 999,
+                background: "rgba(124,58,237,0.10)",
+                border: "1px solid rgba(124,58,237,0.18)",
+              }}
+            >
+              <Typography
+                sx={{ fontSize: 11, fontWeight: 800, color: "var(--c-primary)" }}
+              >
+                {rooms?.length || 0}개
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Button
+            size="small"
+            onClick={roomList}
+            sx={{
+              fontWeight: 800,
+              fontSize: 12,
+              borderRadius: 999,
+              px: 1.6,
+              py: 0.6,
+              minHeight: 32,
+              color: "var(--text-2)",
+              border: "1px solid rgba(0,0,0,0.10)",
+              background: "rgba(255,255,255,0.55)",
+              "&:active": { transform: "scale(0.95)" },
+            }}
+          >
+            ↻ 새로고침
+          </Button>
+        </Stack>
+
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+          <TextField
+            fullWidth
+            placeholder="🔍  제목, 코드로 검색"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "var(--radius-lg)",
+                fontWeight: 700,
+                fontSize: 14,
+                background: "rgba(255,255,255,0.55)",
+                "& fieldset": { border: "1px solid rgba(0,0,0,0.10)" },
+                "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.30)" },
+                "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.55)" },
+              },
+            }}
+          />
+          <Chip
+            label="공개 방만"
+            clickable
+            onClick={() => setShowPublicOnly((v) => !v)}
+            sx={{
+              fontWeight: 800,
+              fontSize: 12,
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+              background: showPublicOnly ? "rgba(124,58,237,0.15)" : "rgba(0,0,0,0.04)",
+              border: showPublicOnly ? "1px solid rgba(124,58,237,0.35)" : "1px solid rgba(0,0,0,0.10)",
+              color: showPublicOnly ? "var(--c-primary)" : "var(--text-2)",
+            }}
+          />
+        </Stack>
+
+        <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
+      </Paper>
+
+      {/* ===== 광고 배너 ===== */}
+      <AdBanner />
+
+      {/* ===== 코드로 입장 ===== */}
+      <Paper
+        className="glassCard section"
+        sx={{ p: 2.2, animation: "slideUp 0.5s var(--spring) both 0.15s" }}
       >
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.8 }}>
           <Box
@@ -323,98 +415,6 @@ export default function HomePage() {
             같은 방 내 닉네임 중복 불가
           </Typography>
         </Stack>
-      </Paper>
-
-      {/* ===== 광고 배너 ===== */}
-      <AdBanner style={{ my: 1 }} />
-
-      {/* ===== 공개 방 목록 ===== */}
-      <Paper
-        className="glassCard section"
-        sx={{ p: 2.2, animation: "slideUp 0.5s var(--spring) both 0.15s" }}
-      >
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ mb: 1.5 }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ fontWeight: 950, fontSize: 15, letterSpacing: "-0.02em" }}>
-              🏠 공개 방 목록
-            </Typography>
-            <Box
-              sx={{
-                px: 1.2,
-                py: 0.25,
-                borderRadius: 999,
-                background: "rgba(124,58,237,0.10)",
-                border: "1px solid rgba(124,58,237,0.18)",
-              }}
-            >
-              <Typography
-                sx={{ fontSize: 11, fontWeight: 800, color: "var(--c-primary)" }}
-              >
-                {rooms?.length || 0}개
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Button
-            size="small"
-            onClick={roomList}
-            sx={{
-              fontWeight: 800,
-              fontSize: 12,
-              borderRadius: 999,
-              px: 1.6,
-              py: 0.6,
-              minHeight: 32,
-              color: "var(--text-2)",
-              border: "1px solid rgba(0,0,0,0.10)",
-              background: "rgba(255,255,255,0.55)",
-              "&:active": { transform: "scale(0.95)" },
-            }}
-          >
-            ↻ 새로고침
-          </Button>
-        </Stack>
-
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-          <TextField
-            fullWidth
-            placeholder="🔍  제목, 코드로 검색"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "var(--radius-lg)",
-                fontWeight: 700,
-                fontSize: 14,
-                background: "rgba(255,255,255,0.55)",
-                "& fieldset": { border: "1px solid rgba(0,0,0,0.10)" },
-                "&:hover fieldset": { border: "1px solid rgba(124,58,237,0.30)" },
-                "&.Mui-focused fieldset": { border: "1.5px solid rgba(124,58,237,0.55)" },
-              },
-            }}
-          />
-          <Chip
-            label="공개 방만"
-            clickable
-            onClick={() => setShowPublicOnly((v) => !v)}
-            sx={{
-              fontWeight: 800,
-              fontSize: 12,
-              borderRadius: 999,
-              whiteSpace: "nowrap",
-              background: showPublicOnly ? "rgba(124,58,237,0.15)" : "rgba(0,0,0,0.04)",
-              border: showPublicOnly ? "1px solid rgba(124,58,237,0.35)" : "1px solid rgba(0,0,0,0.10)",
-              color: showPublicOnly ? "var(--c-primary)" : "var(--text-2)",
-            }}
-          />
-        </Stack>
-
-        <RoomList rooms={filteredRooms} onClick={(r) => nav(`/room/${r.code}`)} />
       </Paper>
 
       {/* ===== 게임 안내 링크 ===== */}
