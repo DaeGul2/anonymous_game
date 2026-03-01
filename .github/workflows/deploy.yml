@@ -45,4 +45,4 @@ jobs:
 
             # PM2 재시작 (node 직접 실행 — nodemon은 devDependency라 프로덕션에 없음)
             pm2 delete server 2>/dev/null || true
-            pm2 start server/src/server.js --name server
+            cd server && pm2 start src/server.js --name server && cd ..
