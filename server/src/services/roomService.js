@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 const bcrypt = require("bcrypt");
 const { Room, Player, User, sequelize } = require("../models");
 const { normalizeNickname } = require("./nicknameService");
-const { archiveHumanQa } = require("./qaArchiveService");
+const { archiveHumanQa, accumulateTemplateStats } = require("./qaArchiveService");
 const { env } = require("../config/env");
 
 // AI 플레이어용 한국 닉네임 풀
@@ -329,6 +329,7 @@ async function transferHostIfNeeded(roomId) {
 
     if (!nextHost) {
       // 아무도 없으면 방 폭파
+      await accumulateTemplateStats(roomId);
       await archiveHumanQa(roomId);
       await Room.destroy({ where: { id: roomId }, transaction: t });
       return null;
@@ -382,6 +383,7 @@ async function leaveRoom({ roomId, playerId }) {
       // AI 유저 ID 수집 (CASCADE 전에)
       const aiUserIds = remaining.filter((p) => p.is_ai).map((p) => p.user_id);
 
+      await accumulateTemplateStats(roomId);
       await archiveHumanQa(roomId);
       await Room.destroy({ where: { id: roomId }, transaction: t });
 

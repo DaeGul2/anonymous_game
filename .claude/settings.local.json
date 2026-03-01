@@ -15,7 +15,8 @@
       "Bash(echo exit: $?:*)",
       "Bash(npx jest:*)",
       "Bash(xargs grep:*)",
-      "Bash(echo EXIT:$?:*)"
+      "Bash(echo EXIT:$?:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

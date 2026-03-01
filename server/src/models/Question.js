@@ -21,6 +21,8 @@ module.exports = (sequelize) => {
       is_used: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 
       answer_type: { type: DataTypes.ENUM("free", "yesno"), allowNull: false, defaultValue: "free" },
+
+      template_id: { type: DataTypes.UUID, allowNull: true, defaultValue: null },
     },
     {
       tableName: "questions",

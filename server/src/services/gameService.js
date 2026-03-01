@@ -5,7 +5,7 @@ const { Room, Player, Round, Question, Answer, QuestionHeart, User, sequelize } 
 const { scheduleAt, clearTimers } = require("./timerService");
 const { setGameRuntime, getRoomRuntime, removeRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing, clearChats, getChatsForPlayer } = require("../store/memoryStore");
 const aiService = require("./aiService");
-const { archiveHumanQa } = require("./qaArchiveService");
+const { archiveHumanQa, accumulateTemplateStats } = require("./qaArchiveService");
 
 // ===== 방장 잠수 → 자동 위임 =====
 
@@ -106,6 +106,7 @@ async function destroyRoomIfAllDisconnected(io, roomCode) {
   });
   const aiUserIds = aiPlayers.map((p) => p.user_id);
 
+  await accumulateTemplateStats(room.id);
   await archiveHumanQa(room.id);
   await Room.destroy({ where: { id: room.id } });
 
@@ -355,7 +356,7 @@ async function startRound(io, roomCode) {
   });
 }
 
-async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
+async function submitQuestion(io, { roomCode, playerId, text, answer_type, template_id }) {
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) throw new Error("방을 찾을 수 없음");
   if (room.phase !== "question_submit") throw new Error("지금은 질문 입력 시간이 아님");
@@ -378,6 +379,7 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
   if (existing) {
     existing.text = content;
     existing.answer_type = validType;
+    existing.template_id = template_id || null;
     existing.submitted_at = new Date();
     await existing.save();
   } else {
@@ -386,6 +388,7 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
       round_id: roundId,
       text: content,
       answer_type: validType,
+      template_id: template_id || null,
       submitted_by_player_id: playerId,
       submitted_at: new Date(),
       order_no: 0,
@@ -509,7 +512,7 @@ async function endQuestionSubmit(io, roomCode) {
   io.to(room.code).emit("game:ask", {
     ok: true,
     round_no: room.current_round_no,
-    question: { id: first.id, text: first.text, answer_type: first.answer_type || "free" },
+    question: { id: first.id, text: first.text, answer_type: first.answer_type || "free", is_template: !!first.template_id },
     deadline_at: new Date(room.phase_deadline_at).toISOString(),
   });
 
@@ -660,7 +663,7 @@ async function endAnswer(io, roomCode) {
     ok: true,
     round_no: room.current_round_no,
     is_last: isLast,
-    question: { id: question.id, text: question.text, answer_type: question.answer_type || "free" },
+    question: { id: question.id, text: question.text, answer_type: question.answer_type || "free", is_template: !!question.template_id },
     answers: shuffledAnswers,
     deadline_at: cardDeadline.toISOString(),
     sub_phase: "cards",
@@ -849,7 +852,7 @@ async function nextQuestionOrEnd(io, roomCode) {
   io.to(room.code).emit("game:ask", {
     ok: true,
     round_no: room.current_round_no,
-    question: { id: q.id, text: q.text, answer_type: q.answer_type || "free" },
+    question: { id: q.id, text: q.text, answer_type: q.answer_type || "free", is_template: !!q.template_id },
     deadline_at: deadline.toISOString(),
   });
 
@@ -995,7 +998,7 @@ async function getGameStateForPlayer(room, playerId) {
     return {
       ...base,
       current_question: question
-        ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
+        ? { id: question.id, text: question.text, answer_type: question.answer_type || "free", is_template: !!question.template_id }
         : null,
       answer_submitted: !!myAnswer,
       answer_saved_text: myAnswer ? myAnswer.text : "",
@@ -1054,7 +1057,7 @@ async function getGameStateForPlayer(room, playerId) {
       sub_phase: subPhase,
       reveal: {
         question: question
-          ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
+          ? { id: question.id, text: question.text, answer_type: question.answer_type || "free", is_template: !!question.template_id }
           : null,
         answers: orderedTexts,
         is_last: isLast,

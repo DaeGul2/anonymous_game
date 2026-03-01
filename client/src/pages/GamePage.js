@@ -13,6 +13,8 @@ import ChatWindow from "../components/ChatWindow";
 import html2canvas from "html2canvas";
 import { useRoomStore } from "../state/useRoomStore";
 
+const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+
 function isExpired(deadlineIso) {
   if (!deadlineIso) return false;
   return Date.now() > new Date(deadlineIso).getTime();
@@ -254,8 +256,17 @@ export default function GamePage() {
   } = useRoomStore();
 
   const [loadFailed, setLoadFailed] = useState(false);
+  const [templates, setTemplates] = useState([]);
 
   useEffect(() => { initSocket(); }, [initSocket]);
+
+  // 템플릿 목록 로드 (1회)
+  useEffect(() => {
+    fetch(`${SERVER}/api/templates`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setTemplates(d.templates || []); })
+      .catch(() => {});
+  }, []);
 
   // 방 폭파 시 alert + 홈으로 이동
   useEffect(() => {
@@ -425,10 +436,10 @@ export default function GamePage() {
     return () => clearTimeout(t);
   }, [game.hostChanged?.at]);
 
-  const handleSaveQuestion = (text, answer_type) => {
+  const handleSaveQuestion = (text, answer_type, template_id) => {
     if (!code) return;
     lsSet(qKey, { text: String(text ?? ""), ts: Date.now() });
-    gameSubmitQuestion(text, answer_type);
+    gameSubmitQuestion(text, answer_type, template_id);
   };
 
   const handleSaveAnswer = (text) => {
@@ -697,6 +708,7 @@ export default function GamePage() {
             onSave={handleSaveQuestion}
             onEdit={gameEditQuestion}
             deadlineExpiredSignal={deadlineExpiredSignal}
+            templates={templates}
           />
         </>
       )}
@@ -746,6 +758,22 @@ export default function GamePage() {
                 >
                   지금 질문
                 </Typography>
+                {game.current_question?.is_template && (
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.2,
+                      borderRadius: 999,
+                      background: "rgba(124,58,237,0.12)",
+                      border: "1px solid rgba(124,58,237,0.25)",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "#7C3AED",
+                    }}
+                  >
+                    템플릿
+                  </Box>
+                )}
                 {game.current_question?.answer_type === "yesno" && (
                   <Box
                     sx={{

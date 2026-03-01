@@ -9,6 +9,8 @@ const AnswerModel = require("./Answer");
 const UserModel = require("./User");
 const QuestionHeartModel = require("./QuestionHeart");
 const QaArchiveModel = require("./QaArchive");
+const TemplateQuestionModel = require("./TemplateQuestion");
+const TemplateCategoryModel = require("./TemplateCategory");
 
 const Room = RoomModel(sequelize);
 const Player = PlayerModel(sequelize);
@@ -18,6 +20,8 @@ const Answer = AnswerModel(sequelize);
 const User = UserModel(sequelize);
 const QuestionHeart = QuestionHeartModel(sequelize);
 const QaArchive = QaArchiveModel(sequelize);
+const TemplateQuestion = TemplateQuestionModel(sequelize);
+const TemplateCategory = TemplateCategoryModel(sequelize);
 
 // ===== Associations =====
 User.hasMany(Player, { foreignKey: "user_id", as: "players", onDelete: "CASCADE" });
@@ -55,6 +59,14 @@ Answer.belongsTo(Player, { foreignKey: "answered_by_player_id", as: "answered_by
 Question.hasMany(QuestionHeart, { foreignKey: "question_id", as: "hearts", onDelete: "CASCADE" });
 QuestionHeart.belongsTo(Question, { foreignKey: "question_id", as: "question" });
 
+// TemplateQuestion → Question
+TemplateQuestion.hasMany(Question, { foreignKey: "template_id", as: "questions" });
+Question.belongsTo(TemplateQuestion, { foreignKey: "template_id", as: "template" });
+
+// TemplateCategory → TemplateQuestion
+TemplateCategory.hasMany(TemplateQuestion, { foreignKey: "category_id", as: "templates" });
+TemplateQuestion.belongsTo(TemplateCategory, { foreignKey: "category_id", as: "category" });
+
 module.exports = {
   sequelize,
   Room,
@@ -65,4 +77,6 @@ module.exports = {
   User,
   QuestionHeart,
   QaArchive,
+  TemplateQuestion,
+  TemplateCategory,
 };

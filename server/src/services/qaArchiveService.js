@@ -1,6 +1,6 @@
 // src/services/qaArchiveService.js
 const { Op } = require("sequelize");
-const { Question, Answer, Player, QaArchive, QuestionHeart, sequelize } = require("../models");
+const { Question, Answer, Player, QaArchive, QuestionHeart, TemplateQuestion, sequelize } = require("../models");
 
 function calcScore(hearts, playerCount) {
   const rawRate = (hearts + 1) / (playerCount + 2);
@@ -62,6 +62,9 @@ async function archiveHumanQa(roomId) {
       // AI 답변은 제외 (인간 답변만 아카이브)
       if (isAiAnswer) continue;
 
+      // 템플릿 질문은 제외 (자유 질문만 아카이브)
+      if (a.question.template_id) continue;
+
       const hearts = heartMap.get(a.question.id) || 0;
 
       // AI 질문은 하트 1개 이상만
@@ -114,4 +117,37 @@ async function trimArchive() {
   }
 }
 
-module.exports = { archiveHumanQa, trimArchive };
+/**
+ * 방 삭제 전 템플릿별 사용횟수/하트를 template_questions에 누적.
+ * Room.destroy CASCADE로 Question/QuestionHeart가 날아가기 전에 호출해야 함.
+ */
+async function accumulateTemplateStats(roomId) {
+  try {
+    // 이 방에서 template_id가 있는 질문들의 통계 집계
+    const rows = await sequelize.query(
+      `SELECT q.template_id,
+              COUNT(DISTINCT q.id) AS usage_count,
+              COUNT(DISTINCT qh.id) AS heart_count
+       FROM questions q
+       LEFT JOIN question_hearts qh ON qh.question_id = q.id
+       WHERE q.room_id = :roomId AND q.template_id IS NOT NULL
+       GROUP BY q.template_id`,
+      { replacements: { roomId }, type: sequelize.QueryTypes.SELECT }
+    );
+
+    for (const r of rows) {
+      const usage = Number(r.usage_count) || 0;
+      const hearts = Number(r.heart_count) || 0;
+      if (usage === 0 && hearts === 0) continue;
+
+      await TemplateQuestion.increment(
+        { usage_count: usage, heart_count: hearts },
+        { where: { id: r.template_id } }
+      );
+    }
+  } catch (e) {
+    console.error("[accumulateTemplateStats] failed for room", roomId, e?.message || e);
+  }
+}
+
+module.exports = { archiveHumanQa, trimArchive, accumulateTemplateStats };

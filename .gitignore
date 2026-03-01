@@ -1,3 +1,4 @@
 /request/
+/admin/
 client/.env
 server/.env

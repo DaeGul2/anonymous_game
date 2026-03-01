@@ -69,10 +69,10 @@ async function main() {
   // Nginx 리버스 프록시 뒤에 있을 때 X-Forwarded-* 신뢰
   app.set("trust proxy", 1);
 
-  // CORS: 클라이언트 origin만 허용 + credentials
+  // CORS: 클라이언트 + 로컬 어드민 origin 허용
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      origin: [env.CLIENT_URL, "http://localhost:3001"],
       credentials: true,
     })
   );
@@ -112,6 +112,8 @@ async function main() {
   // ===== 라우트 =====
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
+  app.use("/api/templates", require("./routes/templates"));
+  app.use("/api/admin", require("./routes/admin"));
 
   // 현재 유저의 활성 방 조회 (홈화면 자동 복귀용)
   app.get("/room/my-active", async (req, res) => {

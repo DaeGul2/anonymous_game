@@ -4,7 +4,7 @@ const { env } = require("../config/env");
 const { Room, Player, User } = require("../models");
 const { clearTimers } = require("./timerService");
 const { removeRoomRuntime } = require("../store/memoryStore");
-const { archiveHumanQa } = require("./qaArchiveService");
+const { archiveHumanQa, accumulateTemplateStats } = require("./qaArchiveService");
 
 async function touchRoomByCode(roomCode) {
   if (!roomCode) return;
@@ -38,7 +38,8 @@ async function cleanupExpiredRooms(io) {
       });
       const aiUserIds = aiPlayers.map((p) => p.user_id);
 
-      // 인간 Q&A 아카이브 (CASCADE 전에)
+      // 템플릿 통계 누적 + 인간 Q&A 아카이브 (CASCADE 전에)
+      await accumulateTemplateStats(r.id);
       await archiveHumanQa(r.id);
 
       // DB 삭제 (연관 CASCADE로 players/rounds/questions/answers 같이 날아감)

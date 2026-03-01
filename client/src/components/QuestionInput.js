@@ -1,15 +1,28 @@
 // src/components/QuestionInput.js
-import React, { useEffect, useRef, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
-import { QUESTION_TEMPLATES } from "../constants/questionTemplates";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Box, Button, Collapse, Paper, Stack, TextField, Typography } from "@mui/material";
 
-export default function QuestionInput({ canEdit, savedText, submitted, onSave, onEdit, deadlineExpiredSignal }) {
+export default function QuestionInput({ canEdit, savedText, submitted, onSave, onEdit, deadlineExpiredSignal, templates = [] }) {
   const [draft, setDraft] = useState(savedText || "");
   const [answerType, setAnswerType] = useState("free");
   const [editing, setEditing] = useState(!submitted);
   const [pending, setPending] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const timerRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // 카테고리별 그룹핑
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const t of templates) {
+      const catId = t.category?.id || "__none__";
+      const catName = t.category?.name || "기타";
+      if (!map.has(catId)) map.set(catId, { id: catId, name: catName, items: [] });
+      map.get(catId).items.push(t);
+    }
+    return [...map.values()];
+  }, [templates]);
 
   useEffect(() => {
     if (!editing) setDraft(savedText || "");
@@ -28,8 +41,21 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
   const handleSubmit = () => {
     if (!canEdit || pending || !draft.trim()) return;
     setPending(true);
-    onSave(draft.trim(), answerType);
+    onSave(draft.trim(), answerType, selectedTemplateId);
     timerRef.current = setTimeout(() => setPending(false), 800);
+  };
+
+  const handleSelectTemplate = (t) => {
+    if (selectedTemplateId === t.id) {
+      // 같은 질문 다시 탭 → 선택 해제
+      setDraft("");
+      setSelectedTemplateId(null);
+      setAnswerType("free");
+    } else {
+      setDraft(t.text);
+      setSelectedTemplateId(t.id);
+      setAnswerType(t.answer_type || "free");
+    }
   };
 
   const maxChar = 100;
@@ -71,7 +97,12 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
         {canEdit && (
           <Button
             size="small" variant="text"
-            onClick={() => { setEditing(true); setDraft(savedText || draft); if (onEdit) onEdit(); }}
+            onClick={() => {
+              setEditing(true);
+              setDraft(savedText || draft);
+              setSelectedTemplateId(null);
+              if (onEdit) onEdit();
+            }}
             sx={{ mt: 1.2, color: "var(--text-2)", fontWeight: 700, fontSize: 12 }}
           >
             다시 쓰기
@@ -92,53 +123,160 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
         </Typography>
       </Stack>
 
-      {/* 템플릿 칩 */}
-      {canEdit && (
+      {/* 카테고리별 템플릿 선택 */}
+      {canEdit && grouped.length > 0 && (
         <Box sx={{ mb: 1.5 }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", mb: 0.8 }}>
             💡 템플릿으로 시작하기
           </Typography>
+
+          {/* 카테고리 칩 */}
           <Box
             sx={{
               display: "flex",
-              gap: 0.8,
+              gap: 0.6,
               overflowX: "auto",
               pb: 0.5,
               "&::-webkit-scrollbar": { display: "none" },
               scrollbarWidth: "none",
             }}
           >
-            {QUESTION_TEMPLATES.map((t, i) => (
+            {grouped.map((g) => {
+              const isOpen = selectedCategoryId === g.id;
+              return (
+                <Box
+                  key={g.id}
+                  onClick={() => setSelectedCategoryId(isOpen ? null : g.id)}
+                  sx={{
+                    flex: "0 0 auto",
+                    px: 1.4,
+                    py: 0.6,
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                    userSelect: "none",
+                    transition: "all 0.15s ease",
+                    background: isOpen
+                      ? "linear-gradient(135deg, rgba(124,58,237,0.20), rgba(236,72,153,0.12))"
+                      : "rgba(124,58,237,0.06)",
+                    border: isOpen
+                      ? "1.5px solid rgba(124,58,237,0.45)"
+                      : "1.5px solid rgba(124,58,237,0.15)",
+                    color: isOpen ? "var(--c-primary)" : "var(--text-2)",
+                    "&:active": { transform: "scale(0.95)" },
+                  }}
+                >
+                  {g.name}
+                  <Typography
+                    component="span"
+                    sx={{ fontSize: 10, fontWeight: 700, ml: 0.5, opacity: 0.6 }}
+                  >
+                    {g.items.length}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* 선택된 카테고리의 질문 목록 */}
+          {grouped.map((g) => (
+            <Collapse key={g.id} in={selectedCategoryId === g.id} timeout={200} unmountOnExit>
               <Box
-                key={i}
-                onClick={() => {
-                  setDraft(t);
-                  setTimeout(() => textareaRef.current?.focus(), 50);
-                }}
                 sx={{
-                  flex: "0 0 auto",
-                  px: 1.4,
-                  py: 0.7,
-                  borderRadius: 999,
-                  background: "rgba(124,58,237,0.07)",
-                  border: "1px solid rgba(124,58,237,0.18)",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  color: "var(--c-primary)",
-                  userSelect: "none",
-                  transition: "all 0.15s ease",
-                  "&:active": {
-                    background: "rgba(124,58,237,0.18)",
-                    transform: "scale(0.95)",
+                  mt: 1,
+                  maxHeight: 220,
+                  overflowY: "auto",
+                  borderRadius: "var(--radius-lg)",
+                  border: "1px solid rgba(124,58,237,0.15)",
+                  background: "rgba(255,255,255,0.45)",
+                  "&::-webkit-scrollbar": { width: 4 },
+                  "&::-webkit-scrollbar-thumb": {
+                    background: "rgba(124,58,237,0.20)",
+                    borderRadius: 999,
                   },
                 }}
               >
-                {t}
+                {g.items.map((t, i) => {
+                  const isSelected = selectedTemplateId === t.id;
+                  return (
+                    <Box
+                      key={t.id}
+                      onClick={() => handleSelectTemplate(t)}
+                      sx={{
+                        px: 1.6,
+                        py: 1.2,
+                        cursor: "pointer",
+                        userSelect: "none",
+                        transition: "all 0.12s ease",
+                        borderBottom: i < g.items.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                        background: isSelected
+                          ? "linear-gradient(135deg, rgba(124,58,237,0.14), rgba(236,72,153,0.07))"
+                          : "transparent",
+                        "&:active": { background: "rgba(124,58,237,0.10)" },
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      {/* 선택 표시 */}
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          flex: "0 0 auto",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 12,
+                          fontWeight: 900,
+                          transition: "all 0.15s ease",
+                          background: isSelected
+                            ? "linear-gradient(135deg, #7C3AED, #EC4899)"
+                            : "rgba(0,0,0,0.06)",
+                          color: isSelected ? "#fff" : "transparent",
+                          border: isSelected ? "none" : "1.5px solid rgba(0,0,0,0.10)",
+                        }}
+                      >
+                        ✓
+                      </Box>
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          fontWeight: isSelected ? 800 : 600,
+                          lineHeight: 1.4,
+                          letterSpacing: "-0.01em",
+                          color: isSelected ? "var(--c-primary)" : "var(--text-1)",
+                          flex: 1,
+                        }}
+                      >
+                        {t.text}
+                      </Typography>
+                      {t.answer_type === "yesno" && (
+                        <Box
+                          sx={{
+                            flex: "0 0 auto",
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 999,
+                            background: "rgba(59,130,246,0.10)",
+                            border: "1px solid rgba(59,130,246,0.20)",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            color: "#3B82F6",
+                          }}
+                        >
+                          Y/N
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
-            ))}
-          </Box>
+            </Collapse>
+          ))}
         </Box>
       )}
 
@@ -187,7 +325,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
         fullWidth multiline minRows={3} maxRows={8}
         placeholder="여기에 질문을 적어보세요 🤔"
         value={draft}
-        onChange={(e) => setDraft(e.target.value.slice(0, maxChar))}
+        onChange={(e) => { setDraft(e.target.value.slice(0, maxChar)); setSelectedTemplateId(null); }}
         disabled={!canEdit}
         inputRef={textareaRef}
         sx={{

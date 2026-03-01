@@ -106,6 +106,22 @@ export default function AnonymousReveal({ question, answers, revealedCards = [],
               <span style={{ color: "#fff", fontWeight: 900, fontSize: 14 }}>Q</span>
             </Box>
             <Typography sx={{ fontWeight: 800, fontSize: 13, color: "var(--text-2)", letterSpacing: "-0.01em" }}>이 라운드의 질문</Typography>
+            {question?.is_template && (
+              <Box
+                sx={{
+                  px: 1,
+                  py: 0.2,
+                  borderRadius: 999,
+                  background: "rgba(124,58,237,0.12)",
+                  border: "1px solid rgba(124,58,237,0.25)",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#7C3AED",
+                }}
+              >
+                템플릿
+              </Box>
+            )}
             <Box sx={{ flex: 1 }} />
             <Box sx={{ width: 8, height: 8, borderRadius: "50%", background: "linear-gradient(135deg, #7C3AED, #EC4899)", animation: "pulseBeat 1.5s ease-in-out infinite", opacity: 0.6 }} />
           </Stack>
