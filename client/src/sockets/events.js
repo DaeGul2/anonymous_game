@@ -58,6 +58,8 @@ export const EVENTS = {
   GAME_REVEAL_ALL: "game:revealAllCards",
   GAME_REVEAL_ALL_BROADCAST: "game:revealAllCards:broadcast",
 
+  GAME_REVEAL_VIEWING: "game:revealViewing",
+
   GAME_REACTION: "game:reaction",
   GAME_REACTION_BROADCAST: "game:reaction:broadcast",
 };

@@ -542,11 +542,24 @@ async function endAnswer(io, roomCode) {
   const game = rt?.game || {};
   const isLast = (Number(game.questionIndex || 0) + 1) >= (game.questionIds?.length || 0);
 
+  const shuffledAnswers = shuffle(
+    answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
+  );
+
+  // 카드 까기 타이머 (30초)
+  const cardDeadline = new Date(Date.now() + env.REVEAL_CARD_SECONDS * 1000);
+
   await sequelize.transaction(async (t) => {
     room.phase = "reveal";
-    room.phase_deadline_at = null;
+    room.phase_deadline_at = cardDeadline;
     room.last_activity_at = new Date();
     await room.save({ transaction: t });
+  });
+
+  setGameRuntime(room.code, {
+    revealSubPhase: "cards",
+    revealAnswerCount: shuffledAnswers.length,
+    revealedCardSet: [],
   });
 
   await broadcastRoom(io, room.id);
@@ -556,15 +569,22 @@ async function endAnswer(io, roomCode) {
     round_no: room.current_round_no,
     is_last: isLast,
     question: { id: question.id, text: question.text, answer_type: question.answer_type || "free" },
-    answers: shuffle(
-      answers.map((a) => (a.text || "").trim()).filter((t) => t.length > 0)
-    ),
+    answers: shuffledAnswers,
+    deadline_at: cardDeadline.toISOString(),
+    sub_phase: "cards",
+    total_seconds: env.REVEAL_CARD_SECONDS,
   });
 
-  clearTimers(room.code, ["reveal_end", "host_timeout"]);
+  clearTimers(room.code, ["reveal_end", "host_timeout", "reveal_cards_end", "reveal_viewing_end"]);
 
-  // 방장 잠수 타이머 시작
-  await scheduleHostTimeout(io, room.code, "reveal");
+  // 카드 까기 타이머: 30초 후 자동 전체 공개 → 감상 시작
+  scheduleAt(room.code, "reveal_cards_end", cardDeadline.getTime() + 20, async () => {
+    try {
+      await autoRevealAllAndStartViewing(io, room.code);
+    } catch (e) {
+      console.error("[autoRevealAll]", e?.message || e);
+    }
+  });
 }
 
 async function hostRevealNext(io, roomCode, hostPlayerId) {
@@ -573,8 +593,73 @@ async function hostRevealNext(io, roomCode, hostPlayerId) {
   if (room.host_player_id !== hostPlayerId) throw new Error("방장만 가능");
   if (room.phase !== "reveal") throw new Error("지금은 정답 공개 상태가 아님");
 
-  clearTimers(room.code, ["host_timeout"]);
+  clearTimers(room.code, ["host_timeout", "reveal_cards_end", "reveal_viewing_end"]);
   await nextQuestionOrEnd(io, room.code);
+}
+
+// ===== reveal 자동 타이머 =====
+
+// 카드 까기 타이머 만료 → 잔여 카드 자동 공개 + 감상 시작
+async function autoRevealAllAndStartViewing(io, roomCode) {
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room || room.phase !== "reveal") return;
+
+  const rt = getRoomRuntime(roomCode);
+  if (rt?.game?.revealSubPhase !== "cards") return;
+
+  io.to(roomCode).emit("game:revealAllCards:broadcast", {});
+  await startRevealViewing(io, roomCode);
+}
+
+// 감상 타이머 시작 (min(인원수 × 15초, 60초))
+async function startRevealViewing(io, roomCode) {
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room || room.phase !== "reveal") return;
+
+  const rt = getRoomRuntime(roomCode);
+  if (rt?.game?.revealSubPhase === "viewing") return; // 중복 방지
+
+  const humanCount = await Player.count({ where: { room_id: room.id, is_ai: false } });
+  const viewSec = Math.min(humanCount * env.REVEAL_VIEW_PER_PLAYER, env.REVEAL_VIEW_MAX_SECONDS);
+  const viewDeadline = new Date(Date.now() + viewSec * 1000);
+
+  room.phase_deadline_at = viewDeadline;
+  room.last_activity_at = new Date();
+  await room.save();
+
+  setGameRuntime(roomCode, { revealSubPhase: "viewing" });
+
+  await broadcastRoom(io, room.id);
+
+  io.to(roomCode).emit("game:revealViewing", {
+    deadline_at: viewDeadline.toISOString(),
+    total_seconds: viewSec,
+  });
+
+  clearTimers(roomCode, ["reveal_cards_end", "reveal_viewing_end"]);
+  scheduleAt(roomCode, "reveal_viewing_end", viewDeadline.getTime() + 20, async () => {
+    try {
+      await nextQuestionOrEnd(io, roomCode);
+    } catch (e) {
+      console.error("[revealViewingEnd]", e?.message || e);
+    }
+  });
+}
+
+// 개별 카드 공개 시 서버 추적 + 전부 까졌으면 감상 전환
+async function trackRevealCard(io, roomCode, cardIndex) {
+  const rt = getRoomRuntime(roomCode);
+  const g = rt?.game;
+  if (!g || g.revealSubPhase !== "cards") return;
+
+  const revealed = new Set(g.revealedCardSet || []);
+  revealed.add(cardIndex);
+  setGameRuntime(roomCode, { revealedCardSet: [...revealed] });
+
+  if (revealed.size >= (g.revealAnswerCount || 0)) {
+    clearTimers(roomCode, ["reveal_cards_end"]);
+    await startRevealViewing(io, roomCode);
+  }
 }
 
 async function nextQuestionOrEnd(io, roomCode) {
@@ -725,7 +810,7 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
     await Player.update({ is_ready: false }, { where: { room_id: room.id }, transaction: t });
   });
 
-  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout"]);
+  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout", "reveal_cards_end", "reveal_viewing_end"]);
   setGameRuntime(room.code, { roundId: null, questionIds: [], questionIndex: 0, currentQuestionId: null });
 
   await broadcastRoom(io, room.id);
@@ -835,9 +920,12 @@ async function getGameStateForPlayer(room, playerId) {
 
     const hearts = await QuestionHeart.findAll({ where: { question_id: qid } });
 
+    const subPhase = game.revealSubPhase || "cards";
+
     return {
       ...base,
-      deadline_at: null,
+      deadline_at: room.phase_deadline_at ? new Date(room.phase_deadline_at).toISOString() : null,
+      sub_phase: subPhase,
       reveal: {
         question: question
           ? { id: question.id, text: question.text, answer_type: question.answer_type || "free" }
@@ -910,4 +998,6 @@ module.exports = {
   editAnswer,
   getGameStateForPlayer,
   broadcastRoom,
+  startRevealViewing,
+  trackRevealCard,
 };

@@ -14,7 +14,8 @@
       "Bash(python:*)",
       "Bash(echo exit: $?:*)",
       "Bash(npx jest:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(echo EXIT:$?:*)"
     ]
   }
 }

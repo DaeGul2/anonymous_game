@@ -43,6 +43,7 @@ function keyAnswer({ code, roundNo, qid, userId }) {
 }
 
 const HOST_TIMEOUT_SECONDS = 60;
+const REVEAL_CARD_SECONDS = 30;
 
 function phaseLabel(p) {
   if (p === "question_submit") return "질문 작성";
@@ -239,7 +240,6 @@ export default function GamePage() {
     gameEditQuestion,
     gameEditAnswer,
     gameHeartQuestion,
-    hostRevealNext,
     hostNextRound,
     hostEndGame,
     gameRevealCard,
@@ -817,185 +817,163 @@ export default function GamePage() {
             answers={game.reveal?.answers}
             revealedCards={game.revealedCards}
             isHost={isHost}
-            onRevealCard={gameRevealCard}
+            onRevealCard={game.revealSubPhase === "cards" ? gameRevealCard : undefined}
           />
 
-          {/* 하트 버튼 (reveal 페이즈) */}
-          {revealQid && (
-            <Paper
-              className="glassCard section"
-              sx={{
-                p: 2,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-                animation: "slideUp 0.45s var(--spring) both 0.3s",
-                background: revealHeartInfo.hearted
-                  ? "linear-gradient(135deg, rgba(239,68,68,0.08), rgba(244,114,182,0.06)) !important"
-                  : undefined,
-                border: revealHeartInfo.hearted
-                  ? "1px solid rgba(239,68,68,0.20) !important"
-                  : undefined,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: "rgba(17,24,39,0.55)",
-                  lineHeight: 1.35,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                이 질문 괜찮았으면 하트 눌러줘요
-              </Typography>
-              <Box
-                onClick={() => gameHeartQuestion(revealQid)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                  px: 2,
-                  py: 1,
-                  borderRadius: 999,
-                  cursor: "pointer",
-                  background: revealHeartInfo.hearted
-                    ? "rgba(239,68,68,0.12)"
-                    : "rgba(255,255,255,0.55)",
-                  border: revealHeartInfo.hearted
-                    ? "1.5px solid rgba(239,68,68,0.35)"
-                    : "1.5px solid rgba(0,0,0,0.10)",
-                  transition: "all 0.18s ease",
-                  userSelect: "none",
-                  "&:active": { transform: "scale(0.90)" },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 20,
-                    lineHeight: 1,
-                    filter: revealHeartInfo.hearted ? "none" : "grayscale(1)",
-                    transition: "filter 0.2s ease",
-                  }}
-                >
-                  ❤️
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: 14,
-                    fontWeight: 900,
-                    color: revealHeartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.35)",
-                    lineHeight: 1,
-                  }}
-                >
-                  {revealHeartInfo.count || 0}
-                </Typography>
-              </Box>
+          {/* ── 카드 까기 서브페이즈 ── */}
+          {game.revealSubPhase === "cards" && (
+            <Paper className="glassCard section" sx={{ p: 2 }}>
+              {deadlineAt && (
+                <TimerBar deadlineAt={deadlineAt} totalSeconds={game.revealTotalSeconds || REVEAL_CARD_SECONDS} />
+              )}
+              {isHost ? (
+                <>
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#D97706",
+                      textAlign: "center",
+                      mt: deadlineAt ? 1.5 : 0,
+                      mb: 1.5,
+                    }}
+                  >
+                    카드를 터치해서 응답을 공개하세요!
+                  </Typography>
+                  {game.revealedCards.length < (game.reveal?.answers?.length || 0) && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={gameRevealAllCards}
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: 14,
+                        borderRadius: 999,
+                        py: 1.2,
+                        letterSpacing: "-0.01em",
+                        borderColor: "rgba(124,58,237,0.3)",
+                        color: "var(--c-primary)",
+                        "&:hover": { borderColor: "rgba(124,58,237,0.5)", background: "rgba(124,58,237,0.04)" },
+                        "&:active": { transform: "scale(0.97)" },
+                        transition: "transform 0.12s ease",
+                      }}
+                    >
+                      한꺼번에 보기
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Stack spacing={0.8} alignItems="center" sx={{ py: 1 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+                    <Box
+                      sx={{
+                        width: 8, height: 8, borderRadius: "50%",
+                        background: "var(--c-amber)",
+                        animation: "pulseBeat 1.4s ease-in-out infinite",
+                      }}
+                    />
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}>
+                      방장이 카드를 까는 중...
+                    </Typography>
+                  </Stack>
+                </Stack>
+              )}
             </Paper>
           )}
 
-          <Paper className="glassCard section" sx={{ p: 2 }}>
-            {deadlineAt && (
-              <TimerBar deadlineAt={deadlineAt} totalSeconds={HOST_TIMEOUT_SECONDS} />
-            )}
-
-            {isHost ? (
-              <>
-                <Typography
+          {/* ── 감상 서브페이즈 ── */}
+          {game.revealSubPhase === "viewing" && (
+            <>
+              {/* 하트 버튼 */}
+              {revealQid && (
+                <Paper
+                  className="glassCard section"
                   sx={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    color: "#D97706",
-                    textAlign: "center",
-                    mt: deadlineAt ? 1.5 : 0,
-                    mb: 1.5,
+                    p: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    animation: "slideUp 0.45s var(--spring) both 0.3s",
+                    background: revealHeartInfo.hearted
+                      ? "linear-gradient(135deg, rgba(239,68,68,0.08), rgba(244,114,182,0.06)) !important"
+                      : undefined,
+                    border: revealHeartInfo.hearted
+                      ? "1px solid rgba(239,68,68,0.20) !important"
+                      : undefined,
                   }}
                 >
-                  ⏳ 시간 안에 진행해주세요!
-                </Typography>
-                {game.revealedCards.length < (game.reveal?.answers?.length || 0) && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={gameRevealAllCards}
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: 14,
-                      borderRadius: 999,
-                      py: 1.2,
-                      mb: 1.2,
-                      letterSpacing: "-0.01em",
-                      borderColor: "rgba(124,58,237,0.3)",
-                      color: "var(--c-primary)",
-                      "&:hover": { borderColor: "rgba(124,58,237,0.5)", background: "rgba(124,58,237,0.04)" },
-                      "&:active": { transform: "scale(0.97)" },
-                      transition: "transform 0.12s ease",
-                    }}
-                  >
-                    한꺼번에 보기
-                  </Button>
-                )}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  disabled={game.revealedCards.length < (game.reveal?.answers?.length || 0)}
-                  onClick={hostRevealNext}
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: 17,
-                    borderRadius: 999,
-                    py: 1.8,
-                    letterSpacing: "-0.02em",
-                    background: game.revealedCards.length < (game.reveal?.answers?.length || 0)
-                      ? "rgba(0,0,0,0.08)"
-                      : game.reveal?.is_last
-                        ? "linear-gradient(135deg, #10B981, #34D399)"
-                        : "linear-gradient(135deg, #7C3AED, #EC4899)",
-                    boxShadow: game.revealedCards.length < (game.reveal?.answers?.length || 0)
-                      ? "none"
-                      : game.reveal?.is_last
-                        ? "0 8px 28px rgba(16,185,129,0.42)"
-                      : "0 8px 28px rgba(124,58,237,0.40)",
-                    "&:active": { transform: "scale(0.97)" },
-                    transition: "transform 0.12s ease",
-                    animation: "popIn 0.5s var(--spring) both",
-                  }}
-                >
-                  {game.reveal?.is_last ? "🎉 라운드 종료" : "다음 질문 →"}
-                </Button>
-              </>
-            ) : (
-              <Stack spacing={0.8} alignItems="center" sx={{ py: 1 }}>
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Box
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: "var(--c-amber)",
-                      animation: "pulseBeat 1.4s ease-in-out infinite",
-                    }}
-                  />
                   <Typography
-                    sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "rgba(17,24,39,0.55)",
+                      lineHeight: 1.35,
+                      letterSpacing: "-0.01em",
+                    }}
                   >
-                    방장이 다음 단계를 진행 중...
+                    이 질문 괜찮았으면 하트 눌러줘요
+                  </Typography>
+                  <Box
+                    onClick={() => gameHeartQuestion(revealQid)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.8,
+                      px: 2,
+                      py: 1,
+                      borderRadius: 999,
+                      cursor: "pointer",
+                      background: revealHeartInfo.hearted
+                        ? "rgba(239,68,68,0.12)"
+                        : "rgba(255,255,255,0.55)",
+                      border: revealHeartInfo.hearted
+                        ? "1.5px solid rgba(239,68,68,0.35)"
+                        : "1.5px solid rgba(0,0,0,0.10)",
+                      transition: "all 0.18s ease",
+                      userSelect: "none",
+                      "&:active": { transform: "scale(0.90)" },
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 20,
+                        lineHeight: 1,
+                        filter: revealHeartInfo.hearted ? "none" : "grayscale(1)",
+                        transition: "filter 0.2s ease",
+                      }}
+                    >
+                      ❤️
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 14,
+                        fontWeight: 900,
+                        color: revealHeartInfo.hearted ? "#EF4444" : "rgba(17,24,39,0.35)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {revealHeartInfo.count || 0}
+                    </Typography>
+                  </Box>
+                </Paper>
+              )}
+
+              <Paper className="glassCard section" sx={{ p: 2 }}>
+                {deadlineAt && (
+                  <TimerBar deadlineAt={deadlineAt} totalSeconds={game.revealTotalSeconds || 60} />
+                )}
+                <Stack spacing={0.5} alignItems="center" sx={{ mt: deadlineAt ? 1.5 : 0 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}>
+                    잠시 후 자동으로 넘어갑니다
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>
+                    하트와 리액션을 보내보세요!
                   </Typography>
                 </Stack>
-                <Typography
-                  sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}
-                >
-                  진행하지 않으면 자동으로 방장이 넘어갑니다
-                </Typography>
-              </Stack>
-            )}
-          </Paper>
+              </Paper>
+            </>
+          )}
         </>
       )}
 

@@ -37,6 +37,8 @@ export const useRoomStore = create((set, get) => ({
     submission_progress: null,  // { submitted: number, total: number }
     reactions: [],  // [{ id, emoji, text }]
     revealedCards: [],  // 공개된 카드 인덱스 배열
+    revealSubPhase: null,  // "cards" | "viewing"
+    revealTotalSeconds: 30,  // 현재 서브페이즈의 총 시간 (TimerBar용)
   },
 
   error: "",
@@ -160,11 +162,13 @@ export const useRoomStore = create((set, get) => ({
             }
           }
 
-          // reveal phase 복원 (rejoin 시 카드 전체 공개 상태)
+          // reveal phase 복원
           if (g.reveal) {
             gameRestore.reveal = g.reveal;
             gameRestore.current_question = null;
+            gameRestore.revealSubPhase = g.sub_phase || "viewing";
             const revealAnswers = g.reveal?.answers || [];
+            // viewing이면 전체 공개, cards면 아직 안 까진 카드 있을 수 있지만 rejoin은 전체 공개로 처리
             gameRestore.revealedCards = Array.from({ length: revealAnswers.length }, (_, i) => i);
             const rqid = g.reveal?.question?.id;
             if (rqid && g.heart_count !== undefined) {
@@ -212,7 +216,7 @@ export const useRoomStore = create((set, get) => ({
           current_question: null, reveal: null, round_end: null,
           question_submitted: false, question_saved_text: "", question_saved_at: null, question_pending_text: "",
           answer_submitted_by_qid: {}, answer_saved_text_by_qid: {}, answer_saved_at_by_qid: {}, answer_pending_text_by_qid: {},
-          hearts_by_qid: {}, submission_progress: null, reactions: [], revealedCards: [],
+          hearts_by_qid: {}, submission_progress: null, reactions: [], revealedCards: [], revealSubPhase: null, revealTotalSeconds: 30,
         },
       });
     });
@@ -337,7 +341,9 @@ export const useRoomStore = create((set, get) => ({
         game: {
           ...st.game,
           phase: "reveal",
-          deadline_at: null,
+          deadline_at: p.deadline_at || null,
+          revealSubPhase: p.sub_phase || "cards",
+          revealTotalSeconds: p.total_seconds || 30,
           round_no: p.round_no || st.game.round_no,
           current_question: null,
           reveal: {
@@ -363,6 +369,18 @@ export const useRoomStore = create((set, get) => ({
         const total = st.game.reveal?.answers?.length || 0;
         return { game: { ...st.game, revealedCards: Array.from({ length: total }, (_, i) => i) } };
       });
+    });
+
+    // 감상 서브페이즈 시작
+    s.on(EVENTS.GAME_REVEAL_VIEWING, (p) => {
+      set((st) => ({
+        game: {
+          ...st.game,
+          revealSubPhase: "viewing",
+          deadline_at: p.deadline_at || null,
+          revealTotalSeconds: p.total_seconds || 60,
+        },
+      }));
     });
 
     s.on(EVENTS.GAME_ROUND_END, (p) => {

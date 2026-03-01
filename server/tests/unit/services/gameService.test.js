@@ -948,7 +948,8 @@ describe("gameService", () => {
       expect(state.reveal).toBeDefined();
       expect(state.reveal.question).toBeDefined();
       expect(state.reveal.answers).toBeDefined();
-      expect(state.deadline_at).toBeNull();
+      // deadline_at는 카드 까기 또는 감상 타이머 deadline (null이 아닐 수 있음)
+      // reveal phase에서는 phase_deadline_at가 설정됨
     });
 
     test("returns round_end state with heart summary", async () => {

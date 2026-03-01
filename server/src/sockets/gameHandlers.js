@@ -1,5 +1,6 @@
 // server/src/sockets/gameHandlers.js
-const { getSocketSession } = require("../store/memoryStore");
+const { getSocketSession, getRoomRuntime } = require("../store/memoryStore");
+const { clearTimers } = require("../services/timerService");
 const game = require("../services/gameService");
 
 function ok(socket, event, data) {
@@ -121,16 +122,29 @@ module.exports = (io, socket) => {
   });
 
   // ===== 카드 까기 (reveal 답변 공개) =====
-  socket.on("game:revealCard", ({ cardIndex } = {}) => {
-    const sess = getSocketSession(socket.id);
-    if (!sess?.roomCode) return;
-    io.to(sess.roomCode).emit("game:revealCard:broadcast", { cardIndex });
+  socket.on("game:revealCard", async ({ cardIndex } = {}) => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode) return;
+      io.to(sess.roomCode).emit("game:revealCard:broadcast", { cardIndex });
+      // 서버 추적: 전부 까졌으면 자동 감상 전환
+      await game.trackRevealCard(io, sess.roomCode, cardIndex);
+    } catch (e) {
+      console.error("[revealCard]", e?.message || e);
+    }
   });
 
-  socket.on("game:revealAllCards", () => {
-    const sess = getSocketSession(socket.id);
-    if (!sess?.roomCode) return;
-    io.to(sess.roomCode).emit("game:revealAllCards:broadcast", {});
+  socket.on("game:revealAllCards", async () => {
+    try {
+      const sess = getSocketSession(socket.id);
+      if (!sess?.roomCode) return;
+      io.to(sess.roomCode).emit("game:revealAllCards:broadcast", {});
+      // 카드 타이머 취소 + 감상 시작
+      clearTimers(sess.roomCode, ["reveal_cards_end"]);
+      await game.startRevealViewing(io, sess.roomCode);
+    } catch (e) {
+      console.error("[revealAllCards]", e?.message || e);
+    }
   });
 
   // ===== 질문 하트 토글 =====
