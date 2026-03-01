@@ -180,6 +180,22 @@ export default function AnonymousReveal({ question, answers, revealedCards = [],
               {/* 상단 악센트 */}
               <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, opacity: 0.6 }} />
 
+              {/* 글로우 플래시 — 텍스트 공개 시점에 카드 뒤에서 번쩍 */}
+              {isFreshReveal && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: -4,
+                    borderRadius: "inherit",
+                    background: `radial-gradient(ellipse at center, ${accent}, transparent 70%)`,
+                    opacity: 0,
+                    animation: `cardFlash 0.6s ease ${peel.dur * 0.76}s both`,
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+
               {/* 앞면 내용 — 다 뜯긴 후에만 보임 */}
               <Stack
                 direction="row"
@@ -188,7 +204,7 @@ export default function AnonymousReveal({ question, answers, revealedCards = [],
                 sx={{
                   ...(isFreshReveal ? {
                     opacity: 0,
-                    animation: `contentPop 0.35s var(--spring) ${peel.dur * 0.78}s forwards`,
+                    animation: `contentReveal 0.5s var(--spring) ${peel.dur * 0.78}s forwards`,
                   } : {}),
                 }}
               >

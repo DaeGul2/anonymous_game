@@ -8,6 +8,7 @@ import QuestionInput from "../components/QuestionInput";
 import AnswerInput from "../components/AnswerInput";
 import ShareButton from "../components/ShareButton";
 import ReactionFAB from "../components/ReactionFAB";
+import html2canvas from "html2canvas";
 import { useRoomStore } from "../state/useRoomStore";
 
 function isExpired(deadlineIso) {
@@ -42,7 +43,7 @@ function keyAnswer({ code, roundNo, qid, userId }) {
   return `ag:${code}:r${roundNo}:q${qid}:a:${h}`;
 }
 
-const HOST_TIMEOUT_SECONDS = 60;
+const ROUND_END_TIMEOUT_SECONDS = 180;
 const REVEAL_CARD_SECONDS = 30;
 
 function phaseLabel(p) {
@@ -300,6 +301,35 @@ export default function GamePage() {
   const wasExpiredRef = useRef(false);
   const [hostChangedNotice, setHostChangedNotice] = useState(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const revealRef = useRef(null);
+
+  const handleSaveImage = async () => {
+    if (!revealRef.current) return;
+    try {
+      const canvas = await html2canvas(revealRef.current, {
+        backgroundColor: "#F8F7FF",
+        scale: 2,
+        useCORS: true,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+
+      if (navigator.share && navigator.canShare) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], "anonymous-game.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          return;
+        }
+      }
+
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `익명게임_${Date.now()}.png`;
+      a.click();
+    } catch (e) {
+      console.error("Screenshot save failed:", e);
+    }
+  };
 
   useEffect(() => {
     if (!deadlineAt) {
@@ -811,14 +841,16 @@ export default function GamePage() {
       {/* ===== 공개 페이즈 ===== */}
       {phase === "reveal" && (
         <>
-          <AnonymousReveal
-            key={game.reveal?.question?.id}
-            question={game.reveal?.question}
-            answers={game.reveal?.answers}
-            revealedCards={game.revealedCards}
-            isHost={isHost}
-            onRevealCard={game.revealSubPhase === "cards" ? gameRevealCard : undefined}
-          />
+          <Box ref={revealRef}>
+            <AnonymousReveal
+              key={game.reveal?.question?.id}
+              question={game.reveal?.question}
+              answers={game.reveal?.answers}
+              revealedCards={game.revealedCards}
+              isHost={isHost}
+              onRevealCard={game.revealSubPhase === "cards" ? gameRevealCard : undefined}
+            />
+          </Box>
 
           {/* ── 카드 까기 서브페이즈 ── */}
           {game.revealSubPhase === "cards" && (
@@ -963,13 +995,33 @@ export default function GamePage() {
                 {deadlineAt && (
                   <TimerBar deadlineAt={deadlineAt} totalSeconds={game.revealTotalSeconds || 60} />
                 )}
-                <Stack spacing={0.5} alignItems="center" sx={{ mt: deadlineAt ? 1.5 : 0 }}>
+                <Stack spacing={1} alignItems="center" sx={{ mt: deadlineAt ? 1.5 : 0 }}>
                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}>
                     잠시 후 자동으로 넘어갑니다
                   </Typography>
                   <Typography sx={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>
                     하트와 리액션을 보내보세요!
                   </Typography>
+                  <Button
+                    onClick={handleSaveImage}
+                    variant="outlined"
+                    sx={{
+                      mt: 0.5,
+                      fontWeight: 800,
+                      fontSize: 13,
+                      borderRadius: 999,
+                      px: 3,
+                      py: 0.8,
+                      letterSpacing: "-0.01em",
+                      borderColor: "rgba(124,58,237,0.25)",
+                      color: "var(--c-primary)",
+                      "&:hover": { borderColor: "rgba(124,58,237,0.5)", background: "rgba(124,58,237,0.04)" },
+                      "&:active": { transform: "scale(0.95)" },
+                      transition: "transform 0.12s ease",
+                    }}
+                  >
+                    📷 이미지 저장
+                  </Button>
                 </Stack>
               </Paper>
             </>
@@ -1017,12 +1069,12 @@ export default function GamePage() {
           >
             {isHost
               ? "계속 즐기거나 방을 정리해요."
-              : "방장이 결정하는 중입니다..."}
+              : "방장이 결정하는 중... 시간 초과 시 자동 종료"}
           </Typography>
 
           {deadlineAt && (
             <Box sx={{ width: "100%", mb: 1.8, animation: "fadeIn 0.4s ease both 0.25s" }}>
-              <TimerBar deadlineAt={deadlineAt} totalSeconds={HOST_TIMEOUT_SECONDS} />
+              <TimerBar deadlineAt={deadlineAt} totalSeconds={ROUND_END_TIMEOUT_SECONDS} />
               {isHost && (
                 <Typography
                   sx={{
@@ -1033,7 +1085,7 @@ export default function GamePage() {
                     mt: 1,
                   }}
                 >
-                  ⏳ 시간 안에 다음 단계를 선택해주세요!
+                  ⏳ 시간 초과 시 게임이 자동 종료됩니다!
                 </Typography>
               )}
             </Box>

@@ -1,10 +1,11 @@
 // server/src/services/gameService.js
 const { Op } = require("sequelize");
 const { env } = require("../config/env");
-const { Room, Player, Round, Question, Answer, QuestionHeart, sequelize } = require("../models");
+const { Room, Player, Round, Question, Answer, QuestionHeart, User, sequelize } = require("../models");
 const { scheduleAt, clearTimers } = require("./timerService");
-const { setGameRuntime, getRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing } = require("../store/memoryStore");
+const { setGameRuntime, getRoomRuntime, removeRoomRuntime, addEditing, removeEditing, getEditingCount, clearEditing } = require("../store/memoryStore");
 const aiService = require("./aiService");
+const { archiveHumanQa } = require("./qaArchiveService");
 
 // ===== 방장 잠수 → 자동 위임 =====
 
@@ -30,6 +31,9 @@ async function scheduleHostTimeout(io, roomCode, phase) {
 }
 
 async function handleHostTimeout(io, roomCode, phase) {
+  // 전원 disconnected면 방 폭파
+  if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   // phase가 바뀌었으면 이미 방장이 행동한 것
@@ -73,6 +77,80 @@ async function handleHostTimeout(io, roomCode, phase) {
       await hostEndGame(io, roomCode, room.host_player_id);
     }
   }
+}
+
+// ===== 전원 disconnected → 방 폭파 =====
+
+async function destroyRoomIfAllDisconnected(io, roomCode) {
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) return true; // 이미 없음
+
+  const connectedHumans = await Player.count({
+    where: { room_id: room.id, is_ai: false, is_connected: true },
+  });
+  if (connectedHumans > 0) return false; // 아직 접속 중인 사람 있음
+
+  // 전원 disconnected → 방 폭파
+  console.log(`[destroyRoom] all humans disconnected, destroying room=${roomCode}`);
+
+  io.to(roomCode).emit("room:destroyed", { ok: true, code: roomCode });
+
+  clearTimers(roomCode, [
+    "question_submit_end", "answer_end", "reveal_end",
+    "host_timeout", "round_end_timeout", "reveal_cards_end", "reveal_viewing_end",
+  ]);
+
+  const aiPlayers = await Player.findAll({
+    where: { room_id: room.id, is_ai: true },
+    attributes: ["user_id"],
+  });
+  const aiUserIds = aiPlayers.map((p) => p.user_id);
+
+  await archiveHumanQa(room.id);
+  await Room.destroy({ where: { id: room.id } });
+
+  if (aiUserIds.length > 0) {
+    await User.destroy({ where: { id: { [Op.in]: aiUserIds } } });
+  }
+
+  removeRoomRuntime(roomCode);
+
+  if (io) {
+    try {
+      const sockets = await io.in(roomCode).fetchSockets();
+      for (const s of sockets) { try { s.leave(roomCode); } catch (_) {} }
+    } catch (_) {}
+  }
+
+  return true; // 방 폭파됨
+}
+
+// ===== round_end 고정 타이머 (위임 루프 대신) =====
+
+async function scheduleRoundEndTimeout(io, roomCode) {
+  const deadline = new Date(Date.now() + env.ROUND_END_TIMEOUT_SECONDS * 1000);
+
+  const room = await Room.findOne({ where: { code: roomCode } });
+  if (!room) return;
+  room.phase_deadline_at = deadline;
+  await room.save();
+
+  await broadcastRoom(io, room.id);
+
+  clearTimers(roomCode, ["round_end_timeout"]);
+  scheduleAt(roomCode, "round_end_timeout", deadline.getTime() + 20, async () => {
+    try {
+      if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
+      const r = await Room.findOne({ where: { code: roomCode } });
+      if (!r || r.phase !== "round_end") return;
+
+      // 시간 초과 → 게임 자동 종료
+      await hostEndGame(io, roomCode, r.host_player_id);
+    } catch (e) {
+      console.error("[roundEndTimeout]", e?.message || e);
+    }
+  });
 }
 
 function shuffle(arr) {
@@ -348,6 +426,8 @@ async function submitQuestion(io, { roomCode, playerId, text, answer_type }) {
 }
 
 async function endQuestionSubmit(io, roomCode) {
+  if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "question_submit") return;
@@ -416,6 +496,8 @@ async function endQuestionSubmit(io, roomCode) {
 
   if (shuffled.length === 0) {
     io.to(room.code).emit("game:roundEnd", { ok: true, round_no: room.current_round_no });
+    // 질문 0개여도 round_end 고정 타이머 스케줄 (시간 내 액션 없으면 게임 종료)
+    await scheduleRoundEndTimeout(io, room.code);
     return;
   }
 
@@ -505,6 +587,8 @@ async function submitAnswer(io, { roomCode, playerId, text }) {
 }
 
 async function endAnswer(io, roomCode) {
+  if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
   if (room.phase !== "ask") return;
@@ -601,6 +685,8 @@ async function hostRevealNext(io, roomCode, hostPlayerId) {
 
 // 카드 까기 타이머 만료 → 잔여 카드 자동 공개 + 감상 시작
 async function autoRevealAllAndStartViewing(io, roomCode) {
+  if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room || room.phase !== "reveal") return;
 
@@ -663,6 +749,8 @@ async function trackRevealCard(io, roomCode, cardIndex) {
 }
 
 async function nextQuestionOrEnd(io, roomCode) {
+  if (await destroyRoomIfAllDisconnected(io, roomCode)) return;
+
   const room = await Room.findOne({ where: { code: roomCode } });
   if (!room) return;
 
@@ -724,9 +812,8 @@ async function nextQuestionOrEnd(io, roomCode) {
       heart_summary: heartSummary,
     });
 
-    // 방장 잠수 타이머 시작
-    clearTimers(room.code, ["host_timeout"]);
-    await scheduleHostTimeout(io, room.code, "round_end");
+    // round_end 고정 타이머 (시간 내 액션 없으면 게임 자동 종료)
+    await scheduleRoundEndTimeout(io, room.code);
 
     return;
   }
@@ -791,7 +878,7 @@ async function hostNextRound(io, roomCode, hostPlayerId) {
   if (room.host_player_id !== hostPlayerId) throw new Error("방장만 가능");
   if (room.phase !== "round_end") throw new Error("라운드 종료 상태가 아님");
 
-  clearTimers(room.code, ["host_timeout"]);
+  clearTimers(room.code, ["host_timeout", "round_end_timeout"]);
   await startRound(io, room.code);
 }
 
@@ -810,7 +897,7 @@ async function hostEndGame(io, roomCode, hostPlayerId) {
     await Player.update({ is_ready: false }, { where: { room_id: room.id }, transaction: t });
   });
 
-  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout", "reveal_cards_end", "reveal_viewing_end"]);
+  clearTimers(room.code, ["question_submit_end", "answer_end", "reveal_end", "host_timeout", "round_end_timeout", "reveal_cards_end", "reveal_viewing_end"]);
   setGameRuntime(room.code, { roundId: null, questionIds: [], questionIndex: 0, currentQuestionId: null });
 
   await broadcastRoom(io, room.id);
