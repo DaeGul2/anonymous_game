@@ -11,6 +11,7 @@ import ReactionFAB from "../components/ReactionFAB";
 import ChatFAB from "../components/ChatFAB";
 import ChatWindow from "../components/ChatWindow";
 import html2canvas from "html2canvas";
+import AdBanner from "../components/AdBanner";
 import { useRoomStore } from "../state/useRoomStore";
 
 const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
@@ -1187,6 +1188,9 @@ export default function GamePage() {
               </Stack>
             </Box>
           )}
+
+          {/* 광고 배너 */}
+          <AdBanner style={{ my: 1 }} />
 
           <Stack spacing={1.2}>
             <Button

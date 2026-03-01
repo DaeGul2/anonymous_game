@@ -1,6 +1,7 @@
 // src/server.js
 const express = require("express");
 const http = require("http");
+const helmet = require("helmet");
 const cors = require("cors");
 const session = require("express-session");
 const passport = require("passport");
@@ -68,6 +69,14 @@ async function main() {
 
   // Nginx 리버스 프록시 뒤에 있을 때 X-Forwarded-* 신뢰
   app.set("trust proxy", 1);
+
+  // ===== 보안 헤더 (Helmet) =====
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // SPA + 외부 스크립트(GA, AdSense) 사용으로 CSP는 별도 관리
+      crossOriginEmbedderPolicy: false,
+    })
+  );
 
   // CORS: 클라이언트 + 로컬 어드민 origin 허용
   app.use(

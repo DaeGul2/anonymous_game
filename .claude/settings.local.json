@@ -16,7 +16,8 @@
       "Bash(npx jest:*)",
       "Bash(xargs grep:*)",
       "Bash(echo EXIT:$?:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "WebSearch"
     ]
   }
 }

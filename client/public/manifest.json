@@ -1,6 +1,9 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "익명게임",
+  "name": "익명게임 - 친구들과 솔직한 익명 Q&A 파티 게임",
+  "description": "친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임. 방 코드 하나면 바로 시작!",
+  "lang": "ko",
+  "categories": ["games", "entertainment", "social"],
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +13,20 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#7C3AED",
+  "background_color": "#f0ebff"
 }

@@ -4,10 +4,14 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#f0ebff" />
-    <meta name="description" content="친구들과 하는 익명 질문 게임" />
+    <meta name="theme-color" content="#7C3AED" />
+    <meta name="description" content="친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임. 방 코드 하나면 바로 시작! 완전 익명 보장, 리액션, 하트 기능까지." />
+    <meta name="keywords" content="익명게임, 익명 질문, 파티게임, 친구 게임, 실시간 게임, 익명 Q&A, 술자리 게임, 술게임, 썸, 이성, 연애, 본격 질문, 아이스브레이킹, MT 게임, 단체 게임, 모임 게임, 회식 게임, anonymous game" />
+    <meta name="author" content="익명게임" />
+    <link rel="canonical" href="https://anonymous-game.store" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="익명게임" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
@@ -20,18 +24,55 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://anonymous-game.store" />
     <meta property="og:title" content="익명게임 - 친구들과 솔직한 익명 Q&A" />
-    <meta property="og:description" content="솔직한 질문, 익명의 답변. 친구들과 함께하는 실시간 익명 게임 🎭" />
+    <meta property="og:description" content="친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임. 방 코드 하나면 바로 시작!" />
     <meta property="og:image" content="https://anonymous-game.store/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="익명게임" />
     <meta property="og:locale" content="ko_KR" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="익명게임 - 친구들과 솔직한 익명 Q&A" />
-    <meta name="twitter:description" content="솔직한 질문, 익명의 답변. 친구들과 함께하는 실시간 익명 게임 🎭" />
+    <meta name="twitter:description" content="친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임. 방 코드 하나면 바로 시작!" />
     <meta name="twitter:image" content="https://anonymous-game.store/og-image.png" />
 
-    <title>익명게임</title>
+    <!-- 구조화된 데이터 (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "익명게임",
+      "alternateName": "Anonymous Game",
+      "url": "https://anonymous-game.store",
+      "description": "친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW"
+      },
+      "inLanguage": "ko",
+      "author": {
+        "@type": "Person",
+        "name": "민구원",
+        "email": "min@insabr.kr"
+      }
+    }
+    </script>
+
+    <title>익명게임 - 친구들과 솔직한 익명 Q&A 파티 게임</title>
+
+    <!-- Google Analytics (GA4) -->
+    <!-- TODO: G-7FJ7R44Z10를 실제 GA4 측정 ID로 교체 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7FJ7R44Z10"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-7FJ7R44Z10', { send_page_view: false });
+    </script>
 
     <!-- 인앱 브라우저 → 외부 브라우저로 리다이렉트 -->
     <script>
@@ -71,7 +112,17 @@
     </script>
   </head>
   <body>
-    <noscript>JavaScript를 활성화해주세요.</noscript>
+    <noscript>
+      <h1>익명게임 - 친구들과 솔직한 익명 Q&A 파티 게임</h1>
+      <p>친구들과 익명으로 질문하고 솔직하게 답변하는 실시간 파티 게임입니다. 방 코드 하나면 바로 시작할 수 있어요!</p>
+      <p>이 사이트를 이용하려면 JavaScript를 활성화해주세요.</p>
+      <ul>
+        <li><a href="/intro">게임 소개</a></li>
+        <li><a href="/how-to-play">하는 방법</a></li>
+        <li><a href="/privacy">개인정보처리방침</a></li>
+        <li><a href="/terms">이용약관</a></li>
+      </ul>
+    </noscript>
     <div id="root"></div>
   </body>
 </html>

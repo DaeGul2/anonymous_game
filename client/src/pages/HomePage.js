@@ -4,6 +4,7 @@ import { Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/mat
 import { useNavigate } from "react-router-dom";
 import RoomList from "../components/RoomList";
 import CreateRoomModal from "../components/CreateRoomModal";
+import AdBanner from "../components/AdBanner";
 import { useRoomStore } from "../state/useRoomStore";
 
 export default function HomePage() {
@@ -323,6 +324,9 @@ export default function HomePage() {
           </Typography>
         </Stack>
       </Paper>
+
+      {/* ===== 광고 배너 ===== */}
+      <AdBanner style={{ my: 1 }} />
 
       {/* ===== 공개 방 목록 ===== */}
       <Paper

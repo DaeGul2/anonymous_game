@@ -18,6 +18,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
     "mysql2": "^3.16.1",
     "openai": "^6.24.0",
     "passport": "^0.7.0",

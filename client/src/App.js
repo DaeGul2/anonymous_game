@@ -10,6 +10,9 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import IntroPage from "./pages/IntroPage";
 import HowToPlayPage from "./pages/HowToPlayPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import Footer from "./components/Footer";
+import usePageTracking from "./hooks/usePageTracking";
 import { useRoomStore } from "./state/useRoomStore";
 import "./App.css";
 
@@ -18,6 +21,11 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
+  return null;
+}
+
+function PageTracker() {
+  usePageTracking();
   return null;
 }
 
@@ -194,6 +202,7 @@ export default function App() {
     <BrowserRouter>
       <ViewportFix />
       <ScrollToTop />
+      <PageTracker />
 
       <GlobalHeader />
       <div className="globalHeaderSpacer" />
@@ -212,11 +221,13 @@ export default function App() {
               <Route path="/game/:code" element={<GamePage />} />
               <Route path="/room"       element={<Navigate to="/" replace />} />
               <Route path="/game"       element={<Navigate to="/" replace />} />
-              <Route path="*"           element={<Navigate to="/" replace />} />
+              <Route path="*"           element={<NotFoundPage />} />
             </Routes>
           </AuthGate>
         } />
       </Routes>
+
+      <Footer />
     </BrowserRouter>
   );
 }

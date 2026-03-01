@@ -6,6 +6,7 @@ import ReadyPanel from "../components/ReadyPanel";
 import AvatarPicker from "../components/AvatarPicker";
 import { avatarUrl, loadSavedAvatar, saveAvatarChoice } from "../constants/avatars";
 import ShareButton from "../components/ShareButton";
+import AdBanner from "../components/AdBanner";
 import { useRoomStore } from "../state/useRoomStore";
 
 function PlayerRow({ player, myId, hostId, index }) {
@@ -421,6 +422,9 @@ export default function RoomLobbyPage() {
               icon="📨"
             />
           </Paper>
+
+          {/* 광고 배너 */}
+          <AdBanner style={{ my: 0.5 }} />
 
           {/* 방장: 비밀번호 설정 */}
           {isHostMe && (
