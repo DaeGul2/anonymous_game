@@ -125,7 +125,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
 
       {/* 카테고리별 템플릿 선택 */}
       {canEdit && grouped.length > 0 && (
-        <Box sx={{ mb: 1.5 }}>
+        <Box id="qi-template" sx={{ mb: 1.5 }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", mb: 0.8 }}>
             💡 템플릿으로 시작하기
           </Typography>
@@ -282,7 +282,7 @@ export default function QuestionInput({ canEdit, savedText, submitted, onSave, o
 
       {/* 답변 타입 토글 */}
       {canEdit && (
-        <Box sx={{ mb: 1.5 }}>
+        <Box id="qi-answer-type" sx={{ mb: 1.5 }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", mb: 0.8 }}>
             🎯 답변 형식 선택
           </Typography>

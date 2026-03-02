@@ -178,6 +178,7 @@ export default function ReactionFAB() {
 
       {/* FAB + 메뉴 영역 */}
       <Box
+        id="game-reaction-fab"
         sx={{
           position: "fixed",
           bottom: "calc(24px + env(safe-area-inset-bottom))",

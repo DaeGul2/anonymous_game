@@ -17,7 +17,10 @@
       "Bash(xargs grep:*)",
       "Bash(echo EXIT:$?:*)",
       "Bash(npx vite:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(xargs wc:*)",
+      "Bash(npm info:*)",
+      "Bash(rm:*)"
     ]
   }
 }
