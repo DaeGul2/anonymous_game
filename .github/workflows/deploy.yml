@@ -37,7 +37,9 @@ jobs:
             # client 변경 감지 → 빌드
             if git diff HEAD~1 --name-only | grep -q "^client/"; then
               echo "Client changed, building..."
-              cd client && npm install && npm run build && cd ..
+              cd client && npm install
+              REACT_APP_API_BASE_URL=https://anonymous-game.store REACT_APP_SOCKET_URL=https://anonymous-game.store npm run build
+              cd ..
             fi
 
             # server 의존성 설치 (항상 실행 — npm ci가 lock 기준으로 빠르게 처리)
