@@ -2,8 +2,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 
-// 실제 광고 슬롯 ID로 교체하면 광고 노출 시작
+const AD_CLIENT = "ca-pub-3929250227887843";
 const AD_SLOT = "";  // TODO: AdSense 승인 후 슬롯 ID 입력
+
+// AdSense 스크립트를 동적으로 로드 (한 번만)
+let scriptLoaded = false;
+function loadAdSenseScript() {
+  if (scriptLoaded) return;
+  if (document.querySelector(`script[src*="adsbygoogle.js?client=${AD_CLIENT}"]`)) {
+    scriptLoaded = true;
+    return;
+  }
+  const s = document.createElement("script");
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}`;
+  s.async = true;
+  s.crossOrigin = "anonymous";
+  document.head.appendChild(s);
+  scriptLoaded = true;
+}
 
 export default function AdBanner({ style, className }) {
   const adRef = useRef(null);
@@ -11,12 +27,17 @@ export default function AdBanner({ style, className }) {
   const [filled, setFilled] = useState(false);
 
   useEffect(() => {
+    if (!AD_SLOT) return;
+    // 콘텐츠가 있는 페이지에서만 스크립트 로드
+    loadAdSenseScript();
+  }, []);
+
+  useEffect(() => {
     if (!AD_SLOT || pushed.current) return;
     try {
       if (window.adsbygoogle) {
         window.adsbygoogle.push({});
         pushed.current = true;
-        // 광고가 실제로 채워졌는지 확인
         const timer = setTimeout(() => {
           if (adRef.current && adRef.current.offsetHeight > 0) {
             setFilled(true);
@@ -29,7 +50,6 @@ export default function AdBanner({ style, className }) {
     }
   }, []);
 
-  // 슬롯 ID 없거나 광고 로드 안 됐으면 완전히 숨김
   if (!AD_SLOT) return null;
 
   return (
@@ -44,7 +64,7 @@ export default function AdBanner({ style, className }) {
       <ins
         className="adsbygoogle"
         style={{ display: "block" }}
-        data-ad-client="ca-pub-3929250227887843"
+        data-ad-client={AD_CLIENT}
         data-ad-slot={AD_SLOT}
         data-ad-format="auto"
         data-full-width-responsive="true"
