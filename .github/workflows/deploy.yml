@@ -43,6 +43,9 @@ jobs:
             # server 의존성 설치 (항상 실행 — npm ci가 lock 기준으로 빠르게 처리)
             cd server && npm install --production && cd ..
 
+            # 템플릿 시드 (findOrCreate라 중복 걱정 없음)
+            cd server && node seed-templates.js && cd ..
+
             # PM2 재시작 (node 직접 실행 — nodemon은 devDependency라 프로덕션에 없음)
             pm2 delete server 2>/dev/null || true
             cd server && pm2 start src/server.js --name server && cd ..
