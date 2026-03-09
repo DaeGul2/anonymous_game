@@ -10,6 +10,7 @@ const { Server } = require("socket.io");
 
 const connectSessionSequelize = require("connect-session-sequelize");
 
+const cookieParser = require("cookie-parser");
 const { env } = require("./config/env");
 const { sequelize, initDb } = require("./config/db");
 const { User } = require("./models");
@@ -85,6 +86,7 @@ async function main() {
       credentials: true,
     })
   );
+  app.use(cookieParser());
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 

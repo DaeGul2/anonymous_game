@@ -151,7 +151,10 @@ function AuthGate({ children }) {
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user) {
+    const returnTo = location.pathname + location.search;
+    return <LoginPage returnTo={returnTo !== "/" ? returnTo : ""} />;
+  }
 
   return children;
 }

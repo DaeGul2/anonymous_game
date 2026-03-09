@@ -1,13 +1,10 @@
 // src/pages/HomePage.js
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import Joyride from "react-joyride";
 import RoomList from "../components/RoomList";
 import CreateRoomModal from "../components/CreateRoomModal";
 import AdBanner from "../components/AdBanner";
-import useTutorial from "../hooks/useTutorial";
-import { JOYRIDE_LOCALE, JOYRIDE_STYLES } from "../constants/tutorialConfig";
 import { useRoomStore } from "../state/useRoomStore";
 
 export default function HomePage() {
@@ -83,16 +80,6 @@ export default function HomePage() {
     }
   }, [error]);
 
-  // ===== 튜토리얼 =====
-  const { run: tutorialRun, handleFinish: tutorialCallback } = useTutorial("home");
-  const homeSteps = useMemo(() => [
-    { target: "#home-hero", content: "익명게임에 오신 걸 환영해요! 친구들과 익명으로 질문하고 솔직하게 답변하는 파티 게임이에요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#home-create-btn", content: "여기서 새로운 방을 만들 수 있어요. 방 제목과 인원 수를 정해보세요!", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#home-room-list", content: "다른 사람이 만든 공개 방 목록이에요. 탭하면 바로 입장할 수 있어요.", disableBeacon: true, disableScrolling: true, placement: "top" },
-    { target: "#home-join-code", content: "친구에게 받은 방 코드가 있다면 여기에 입력해서 입장하세요.", disableBeacon: true, disableScrolling: true, placement: "top" },
-    { target: "#home-guide-links", content: "게임이 처음이라면 '게임 소개'와 '하는 방법'을 먼저 읽어보세요!", disableBeacon: true, disableScrolling: true, placement: "top" },
-  ], []);
-
   const filteredRooms = useMemo(() => {
     let list = Array.isArray(rooms) ? rooms : [];
     if (showPublicOnly) list = list.filter((r) => !r.has_password);
@@ -106,18 +93,6 @@ export default function HomePage() {
 
   return (
     <Box className="appShell" sx={{ "& .section": { my: "8px" } }}>
-      <Joyride
-        steps={homeSteps}
-        run={tutorialRun}
-        callback={tutorialCallback}
-        continuous
-        showSkipButton
-        disableOverlayClose
-        disableScrolling
-        locale={JOYRIDE_LOCALE}
-        styles={JOYRIDE_STYLES}
-      />
-
       {/* ===== 히어로 섹션 ===== */}
       <Box
         id="home-hero"

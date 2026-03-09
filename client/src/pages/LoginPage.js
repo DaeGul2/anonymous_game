@@ -4,7 +4,7 @@ import { Box, Typography } from "@mui/material";
 
 const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
-export default function LoginPage() {
+export default function LoginPage({ returnTo = "" }) {
   return (
     <Box
       sx={{
@@ -93,7 +93,7 @@ export default function LoginPage() {
         {/* Google 로그인 버튼 */}
         <Box
           component="a"
-          href={`${SERVER}/auth/google`}
+          href={`${SERVER}/auth/google${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
           sx={{
             width: "100%",
             display: "flex",

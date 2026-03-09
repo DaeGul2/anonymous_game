@@ -350,6 +350,7 @@ export const useRoomStore = create((set, get) => ({
             current_question: q,
             reveal: null,
             round_end: null,
+            submission_progress: null,
             question_pending_text: "",
             answer_pending_text_by_qid: qid
               ? { ...st.game.answer_pending_text_by_qid, [qid]: "" }

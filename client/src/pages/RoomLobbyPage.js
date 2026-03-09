@@ -1,15 +1,12 @@
 // src/pages/RoomLobbyPage.js
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Chip, Collapse, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import Joyride from "react-joyride";
 import ReadyPanel from "../components/ReadyPanel";
 import AvatarPicker from "../components/AvatarPicker";
 import { avatarUrl, loadSavedAvatar, saveAvatarChoice } from "../constants/avatars";
 import ShareButton from "../components/ShareButton";
 import AdBanner from "../components/AdBanner";
-import useTutorial from "../hooks/useTutorial";
-import { JOYRIDE_LOCALE, JOYRIDE_STYLES } from "../constants/tutorialConfig";
 import { useRoomStore } from "../state/useRoomStore";
 
 function PlayerRow({ player, myId, hostId, index }) {
@@ -188,14 +185,6 @@ export default function RoomLobbyPage() {
     }
   }, [error]);
 
-  // ===== 튜토리얼 =====
-  const { run: tutorialRun, handleFinish: tutorialCallback } = useTutorial("lobby");
-  const lobbySteps = useMemo(() => [
-    { target: "#lobby-room-info", content: "방 정보에요. 방 제목과 코드, 최대 인원을 확인할 수 있어요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#lobby-invite", content: "친구를 초대하려면 여기를 탭하세요! 링크를 공유하면 바로 입장할 수 있어요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#lobby-ready", content: "준비 버튼을 눌러주세요! 모든 참여자가 준비되면 방장이 게임을 시작할 수 있어요.", disableBeacon: true, disableScrolling: true, placement: "top" },
-  ], []);
-
   const handleAvatarChange = (idx) => {
     setAvatarIdx(idx);
     saveAvatarChoice(idx);
@@ -372,18 +361,6 @@ export default function RoomLobbyPage() {
       {/* 입장 후 */}
       {state?.room && (
         <>
-          <Joyride
-            steps={lobbySteps}
-            run={tutorialRun}
-            callback={tutorialCallback}
-            continuous
-            showSkipButton
-            disableOverlayClose
-            disableScrolling
-            locale={JOYRIDE_LOCALE}
-            styles={JOYRIDE_STYLES}
-          />
-
           {/* 방 정보 */}
           <Paper
             id="lobby-room-info"

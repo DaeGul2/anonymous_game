@@ -1,8 +1,7 @@
 // src/pages/GamePage.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import Joyride from "react-joyride";
 import TimerBar from "../components/TimerBar";
 import AnonymousReveal from "../components/AnonymousReveal";
 import QuestionInput from "../components/QuestionInput";
@@ -13,28 +12,7 @@ import ChatFAB from "../components/ChatFAB";
 import ChatWindow from "../components/ChatWindow";
 import html2canvas from "html2canvas";
 import AdBanner from "../components/AdBanner";
-import useTutorial from "../hooks/useTutorial";
-import { JOYRIDE_LOCALE, JOYRIDE_STYLES } from "../constants/tutorialConfig";
 import { useRoomStore } from "../state/useRoomStore";
-
-/** 리렌더 격리용 튜토리얼 래퍼 — 부모(GamePage)의 타이머 리렌더가 Joyride로 전파되지 않도록 memo */
-const GameTutorial = React.memo(function GameTutorial({ tutorialKey, steps, run }) {
-  const { handleFinish } = useTutorial(tutorialKey);
-  if (!run || !steps.length) return null;
-  return (
-    <Joyride
-      steps={steps}
-      run={run}
-      callback={handleFinish}
-      continuous
-      showSkipButton
-      disableOverlayClose
-      disableScrolling
-      locale={JOYRIDE_LOCALE}
-      styles={JOYRIDE_STYLES}
-    />
-  );
-});
 
 const SERVER = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
@@ -471,35 +449,6 @@ export default function GamePage() {
     gameSubmitAnswer(text);
   };
 
-  // ===== 튜토리얼 (페이즈별) =====
-  const { run: tQRun } = useTutorial("game-question");
-  const { run: tARun } = useTutorial("game-ask");
-  const { run: tRRun } = useTutorial("game-reveal");
-
-  const questionSteps = useMemo(() => [
-    { target: "#game-question-guide", content: "질문 작성 시간이에요! 익명이니까 평소에 못 했던 질문을 솔직하게 써보세요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#qi-template", content: "직접 쓰기 어려우면 카테고리별 템플릿에서 골라보세요! 탭하면 자동으로 입력돼요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#qi-answer-type", content: "답변 형식을 선택할 수 있어요. '자유 답변'은 텍스트, '예/아니오'는 간단한 투표형이에요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-  ], []);
-
-  const askSteps = useMemo(() => [
-    { target: "#game-question-banner", content: "누군가의 익명 질문이에요! 질문을 읽고 아래에서 솔직하게 답변해보세요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#game-heart-btn", content: "좋은 질문이라고 생각하면 하트를 눌러주세요! 라운드 끝에 인기 질문이 공개돼요.", disableBeacon: true, disableScrolling: true, placement: "top" },
-  ], []);
-
-  const revealSteps = useMemo(() => [
-    { target: "#game-reveal-area", content: "답변이 공개돼요! 방장이 카드를 하나씩 까면 익명 답변이 드러나요.", disableBeacon: true, disableScrolling: true, placement: "bottom" },
-    { target: "#game-reaction-fab", content: "리액션을 보내보세요! 이모지나 텍스트 리액션으로 실시간 반응할 수 있어요.", disableBeacon: true, disableScrolling: true, placement: "left" },
-  ], []);
-
-  // 현재 페이즈에 맞는 튜토리얼 키와 스텝 결정
-  const tutorialInfo = useMemo(() => {
-    if (phase === "question_submit" && tQRun) return { key: "game-question", steps: questionSteps };
-    if (phase === "ask" && tARun)             return { key: "game-ask",      steps: askSteps };
-    if (phase === "reveal" && tRRun)          return { key: "game-reveal",   steps: revealSteps };
-    return null;
-  }, [phase, tQRun, tARun, tRRun, questionSteps, askSteps, revealSteps]);
-
   /** ===== overlay control ===== */
   const timeoutsRef = useRef([]);
   // 마운트 시점의 qid로 초기화 → 재접속/새로고침 시 이미 진행 중인 단계의 오버레이를 스킵
@@ -572,16 +521,6 @@ export default function GamePage() {
         bottomText={overlay.bottomText}
         announceText={overlay.announceText}
       />
-
-      {/* 튜토리얼 — memo 분리로 타이머 리렌더와 격리 */}
-      {tutorialInfo && !overlay.open && (
-        <GameTutorial
-          key={tutorialInfo.key}
-          tutorialKey={tutorialInfo.key}
-          steps={tutorialInfo.steps}
-          run
-        />
-      )}
 
       {/* 페이지 헤더 */}
       <Box className="pageHeader">
@@ -686,25 +625,28 @@ export default function GamePage() {
               sx={{ fontWeight: 900, borderRadius: 999, opacity: 0.8, fontSize: 12 }}
             />
           )}
-          {game.submission_progress && (phase === "question_submit" || phase === "ask") && (
-            <Chip
-              size="small"
-              label={`${game.submission_progress.submitted}/${game.submission_progress.total}명 제출`}
-              sx={{
-                fontWeight: 900,
-                borderRadius: 999,
-                fontSize: 12,
-                background: game.submission_progress.submitted === game.submission_progress.total
-                  ? "linear-gradient(135deg, #10B981, #34D399)"
-                  : "rgba(124,58,237,0.12)",
-                color: game.submission_progress.submitted === game.submission_progress.total
-                  ? "#fff"
-                  : "var(--c-primary)",
-                border: "1px solid rgba(124,58,237,0.20)",
-                transition: "all 0.3s ease",
-              }}
-            />
-          )}
+          {(phase === "question_submit" || phase === "ask") && (() => {
+            const submitted = game.submission_progress?.submitted ?? 0;
+            const total = game.submission_progress?.total ?? (state?.players?.length || 0);
+            const allDone = total > 0 && submitted >= total;
+            return (
+              <Chip
+                size="small"
+                label={`${submitted}/${total}명 제출`}
+                sx={{
+                  fontWeight: 900,
+                  borderRadius: 999,
+                  fontSize: 12,
+                  background: allDone
+                    ? "linear-gradient(135deg, #10B981, #34D399)"
+                    : "rgba(124,58,237,0.12)",
+                  color: allDone ? "#fff" : "var(--c-primary)",
+                  border: "1px solid rgba(124,58,237,0.20)",
+                  transition: "all 0.3s ease",
+                }}
+              />
+            );
+          })()}
         </Stack>
 
         {(phase === "question_submit" || phase === "ask") && (

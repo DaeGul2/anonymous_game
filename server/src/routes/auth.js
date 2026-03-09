@@ -6,15 +6,33 @@ const { env } = require("../config/env");
 const router = express.Router();
 
 // Google OAuth 시작
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", (req, res, next) => {
+  // 로그인 후 돌아갈 경로를 쿠키에 저장 (세션 재생성에 영향받지 않도록)
+  const returnTo = req.query.returnTo;
+  if (returnTo && returnTo.startsWith("/")) {
+    res.cookie("ag_return_to", returnTo, {
+      maxAge: 5 * 60 * 1000, // 5분
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+  }
+  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+});
 
 // Google OAuth 콜백
 router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: `${env.CLIENT_URL}/login?error=1` }),
   (req, res) => {
-    // 로그인 성공 → 클라이언트 홈으로
-    res.redirect(env.CLIENT_URL);
+    const returnTo = req.cookies?.ag_return_to || "";
+    res.clearCookie("ag_return_to");
+
+    if (returnTo && returnTo.startsWith("/")) {
+      res.redirect(env.CLIENT_URL + returnTo);
+    } else {
+      res.redirect(env.CLIENT_URL);
+    }
   }
 );
 
